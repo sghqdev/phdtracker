@@ -2,17 +2,37 @@ import express from 'express';
 import joi from 'joi';
 import mongoose from 'mongoose';
 import Project from '../models/index.js'
+import User from '../models/user.js'
 
 const api = express.Router()
 
+// Get all projects for a specific user
+api.get('/user/:userId/projects', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        if (!userId) {
+            return res.status(400).send({ error: true, message: 'User ID is required' });
+        }
+        
+        // Convert string userId to ObjectId
+        const userIdObj = mongoose.Types.ObjectId(userId);
+        
+        // Fetch projects for this user
+        const data = await Project.find({ userId: userIdObj }, { task: 0, __v: 0, updatedAt: 0 });
+        return res.send(data);
+    } catch (error) {
+        return res.status(500).send({ error: true, message: error.message });
+    }
+});
+
 api.get('/projects', async (req, res) => {
     try {
-        const data = await Project.find({}, { task: 0, __v: 0, updatedAt: 0 })
-        return res.send(data)
+        const data = await Project.find({}, { task: 0, __v: 0, updatedAt: 0 });
+        return res.send(data);
     } catch (error) {
-        return res.send(error)
+        return res.status(500).send({ error: true, message: error.message });
     }
-})
+});
 
 api.get('/project/:id', async (req, res) => {
     if (!req.params.id) res.status(422).send({ data: { error: true, message: 'Id is reaquire' } })
@@ -30,17 +50,22 @@ api.post('/project', async (req, res) => {
     const project = joi.object({
         title: joi.string().min(3).max(30).required(),
         description: joi.string().required(),
+        userId: joi.string().optional()
     })
 
     // validation
-    const { error, value } = project.validate({ title: req.body.title, description: req.body.description });
+    const { error, value } = project.validate({ 
+        title: req.body.title, 
+        description: req.body.description,
+        userId: req.body.userId
+    });
     if (error) return res.status(422).send(error)
 
 
     // insert data 
     try {
         const data = await new Project(value).save()
-        res.send({ data: { title: data.title, description: data.description, updatedAt: data.updatedAt, _id: data._id } })
+        res.send({ data: { title: data.title, description: data.description, updatedAt: data.updatedAt, _id: data._id, userId: data.userId } })
 
     } catch (e) {
         if (e.code === 11000) {

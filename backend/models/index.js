@@ -7,6 +7,11 @@ const project = new mongoose.Schema({
         unique: true // `email` must be unique
     },
     description: String,
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false // Making it optional for backward compatibility with existing data
+    },
     task: [
         {
             id: Number,

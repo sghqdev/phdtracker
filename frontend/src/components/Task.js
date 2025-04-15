@@ -5,7 +5,7 @@ import AddTaskModal from "./AddTaskModal";
 import BtnPrimary from './BtnPrimary'
 import DropdownMenu from "./DropdownMenu";
 // import TaskModal from "./TaskModal";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useLocation } from "react-router";
 import ProjectDropdown from "./ProjectDropdown"
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -109,10 +109,38 @@ function Task() {
     const [title, setTitle] = useState('');
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [currentProjectId, setCurrentProjectId] = useState(null);
+    const isStudentDashboard = location.pathname.startsWith('/student-dashboard');
 
     useEffect(() => {
-        if (!isAddTaskModalOpen || isRenderChange) {
-            axios.get(`http://localhost:9000/project/${projectId}`)
+        // If no projectId is provided, fetch the first available project
+        if (!projectId) {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user && user.id) {
+                axios.get(`http://localhost:9000/user/${user.id}/projects`)
+                    .then((res) => {
+                        if (res.data && res.data.length > 0) {
+                            setCurrentProjectId(res.data[0]._id);
+                            // Navigate to the correct URL with the project ID
+                            const basePath = isStudentDashboard ? '/student-dashboard/' : '/';
+                            navigate(`${basePath}${res.data[0]._id}`);
+                        } else {
+                            toast.error('No projects found. Please create one.');
+                        }
+                    })
+                    .catch((error) => {
+                        toast.error('Error fetching projects');
+                    });
+            }
+        } else {
+            setCurrentProjectId(projectId);
+        }
+    }, [projectId, navigate, isStudentDashboard]);
+
+    useEffect(() => {
+        if (currentProjectId && (!isAddTaskModalOpen || isRenderChange)) {
+            axios.get(`http://localhost:9000/project/${currentProjectId}`)
                 .then((res) => {
                     setTitle(res.data[0].title)
                     setColumns({
@@ -146,30 +174,33 @@ function Task() {
                     toast.error('Something went wrong')
                 })
         }
-    }, [projectId, isAddTaskModalOpen, isRenderChange]);
+    }, [currentProjectId, isAddTaskModalOpen, isRenderChange]);
 
     const updateTodo = (data) => {
-        axios.put(`http://localhost:9000/project/${projectId}/todo`, data)
-            .then((res) => {
-            }).catch((error) => {
-                toast.error('Something went wrong')
-            })
+        if (currentProjectId) {
+            axios.put(`http://localhost:9000/project/${currentProjectId}/todo`, data)
+                .then((res) => {
+                }).catch((error) => {
+                    toast.error('Something went wrong')
+                })
+        }
     }
 
     const handleDelete = (e, taskId) => {
         e.stopPropagation();
-        axios.delete(`http://localhost:9000/project/${projectId}/task/${taskId}`)
-            .then((res) => {
-                toast.success('Task is deleted')
-                setRenderChange(true)
-            }).catch((error) => {
-
-                toast.error('Something went wrong')
-            })
+        if (currentProjectId) {
+            axios.delete(`http://localhost:9000/project/${currentProjectId}/task/${taskId}`)
+                .then((res) => {
+                    toast.success('Task is deleted')
+                    setRenderChange(true)
+                }).catch((error) => {
+                    toast.error('Something went wrong')
+                })
+        }
     }
 
     const handleTaskDetails = (id) => {
-        setTaskId({ projectId, id });
+        setTaskId({ projectId: currentProjectId, id });
         setTaskOpen(true);
     }
 
@@ -178,7 +209,7 @@ function Task() {
             <div className="flex items-center justify-between mb-6">
                 <h1 className='text-xl text-gray-800 flex justify-start items-center space-x-2.5'>
                     <span>{title.slice(0, 25)}{title.length > 25 && '...'}</span>
-                    <ProjectDropdown id={projectId} navigate={navigate} />
+                    {currentProjectId && <ProjectDropdown id={currentProjectId} navigate={navigate} />}
                 </h1>
                 <BtnPrimary onClick={() => setAddTaskModal(true)}>Add todo</BtnPrimary>
             </div>
@@ -228,7 +259,7 @@ function Task() {
                                                                             <div className="pb-2">
                                                                                 <div className="flex item-center justify-between">
                                                                                     <h3 className="text-[#1e293b] font-medium text-sm capitalize">{item.title.slice(0, 22)}{item.title.length > 22 && '...'}</h3>
-                                                                                    <DropdownMenu taskId={item._id} handleDelete={handleDelete} projectId={projectId} setRenderChange={setRenderChange} />
+                                                                                    <DropdownMenu taskId={item._id} handleDelete={handleDelete} projectId={currentProjectId} setRenderChange={setRenderChange} />
                                                                                 </div>
                                                                                 <p className="text-xs text-slate-500 leading-4 -tracking-tight">{item.description.slice(0, 60)}{item.description.length > 60 && '...'}</p>
                                                                                 <span className="py-1 px-2.5 bg-indigo-100 text-indigo-600 rounded-md text-xs font-medium mt-1 inline-block">Task-{item.index}</span>
@@ -251,8 +282,17 @@ function Task() {
                     })}
                 </div >
             </DragDropContext >
-            <AddTaskModal isAddTaskModalOpen={isAddTaskModalOpen} setAddTaskModal={setAddTaskModal} projectId={projectId} />
-            <TaskModal isOpen={isTaskOpen} setIsOpen={setTaskOpen} id={taskId} />
+            {isAddTaskModalOpen && (
+                <AddTaskModal 
+                    isAddTaskModalOpen={isAddTaskModalOpen} 
+                    setAddTaskModal={setAddTaskModal} 
+                    projectId={currentProjectId} 
+                    userId={JSON.parse(localStorage.getItem('user') || '{}')?.id}
+                />
+            )}
+            {isTaskOpen && (
+                <TaskModal isOpen={isTaskOpen} setIsOpen={setTaskOpen} id={taskId} />
+            )}
         </div >
     );
 }

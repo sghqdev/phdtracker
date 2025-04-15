@@ -3,15 +3,21 @@ import { Popover } from '@headlessui/react'
 import axios from "axios"
 import toast from 'react-hot-toast'
 import AddProjectModal from './AddProjectModal'
+import { useLocation } from 'react-router-dom'
 
 const ProjectDropdown = ({ id, navigate }) => {
     const [isModalOpen, setModalState] = useState(false)
+    const location = useLocation();
+    const isStudentDashboard = location.pathname.startsWith('/student-dashboard');
+    
     const handleDelete = async () => {
         try {
             const data = await axios.delete(`http://localhost:9000/project/${id}`)
             if (data.data.deletedCount > 0) {
                 toast.success('Record deleted successfully')
-                navigate('/')
+                // Navigate to the appropriate root path based on context
+                const basePath = isStudentDashboard ? '/student-dashboard' : '/';
+                navigate(basePath)
                 const customEvent = new CustomEvent('projectUpdate');
                 document.dispatchEvent(customEvent);
             } else {
@@ -21,7 +27,6 @@ const ProjectDropdown = ({ id, navigate }) => {
         } catch (e) {
             toast.error('Something went wrong')
         }
-
     }
 
     const closeModal = () => {
