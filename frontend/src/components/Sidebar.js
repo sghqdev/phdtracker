@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import AddProjectModal from './AddProjectModal'
 import axios from 'axios'
-import { Link } from 'react-router-dom'
-// import toast from 'react-hot-toast'
+import { Link, useLocation } from 'react-router-dom'
+import toast from 'react-hot-toast'
+
 const Sidebar = () => {
 
   const [isModalOpen, setModalState] = useState(false)
   const [projects, setProjects] = useState([])
   const [paramsWindow, setParamsWindow] = useState(window.location.pathname.slice(1))
-  useEffect(() => {
-  })
-
+  const location = useLocation();
+  const isStudentDashboard = location.pathname.startsWith('/student-dashboard');
+  
   const handleLocation = (e) => {
     setParamsWindow(new URL(e.currentTarget.href).pathname.slice(1))
   }
@@ -24,10 +25,23 @@ const Sidebar = () => {
   }, [])
 
   const projectData = () => {
-    axios.get('http://localhost:9000/projects/')
+    // Get current user from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id;
+
+    if (!userId) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    // Fetch only the projects belonging to the current user
+    axios.get(`http://localhost:9000/user/${userId}/projects`)
       .then((res) => {
         setProjects(res.data)
       })
+      .catch(error => {
+        toast.error('Failed to load projects');
+      });
   }
 
   useEffect(() => {
@@ -40,7 +54,10 @@ const Sidebar = () => {
     }
   }, []);
 
-
+  // Determine route prefix based on current location
+  const getProjectPath = (projectId) => {
+    return isStudentDashboard ? `/student-dashboard/${projectId}` : `/${projectId}`;
+  };
 
   return (
     <div className='py-5'>
@@ -53,13 +70,19 @@ const Sidebar = () => {
         </button>
       </div>
       <ul className='border-r border-gray-300 pr-2'>
-        {projects.map((project, index) => (
-          <Link key={index} to={project._id} onClick={(e) => handleLocation(e)}>
-            <li className={`px-5 py-1.5 mb-1 text-gray-600 font text-sm capitalize select-none hover:text-indigo-600 rounded transition-colors hover:bg-indigo-200/80 ${paramsWindow === project._id && 'text-indigo-600 bg-indigo-200/80'}`}>
-              {project.title}
-            </li>
-          </Link>
-        ))}
+        {projects.length > 0 ? (
+          projects.map((project, index) => (
+            <Link key={index} to={getProjectPath(project._id)} onClick={(e) => handleLocation(e)}>
+              <li className={`px-5 py-1.5 mb-1 text-gray-600 font text-sm capitalize select-none hover:text-indigo-600 rounded transition-colors hover:bg-indigo-200/80 ${paramsWindow === (isStudentDashboard ? `student-dashboard/${project._id}` : project._id) && 'text-indigo-600 bg-indigo-200/80'}`}>
+                {project.title}
+              </li>
+            </Link>
+          ))
+        ) : (
+          <li className="px-5 py-1.5 mb-1 text-gray-500 text-sm">
+            No projects yet. Add one with the + button.
+          </li>
+        )}
       </ul>
       <AddProjectModal isModalOpen={isModalOpen} closeModal={closeModal} />
     </div>

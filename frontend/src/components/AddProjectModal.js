@@ -26,8 +26,21 @@ const AddProjectModal = ({ isModalOpen, closeModal, edit = false, id = null }) =
 
     const handleSubmit = (e) => {
         e.preventDefault()
+        // Get current user from localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userId = user.id;
+
+        if (!userId) {
+            toast.error('User not authenticated');
+            return;
+        }
+
         if (!edit) {
-            axios.post('http://localhost:9000/project/', { title, description: desc })
+            axios.post('http://localhost:9000/project/', { 
+                title, 
+                description: desc,
+                userId 
+            })
                 .then((res) => {
                     closeModal()
                     const customEvent = new CustomEvent('projectUpdate', { detail: { ...res.data } });
@@ -37,14 +50,18 @@ const AddProjectModal = ({ isModalOpen, closeModal, edit = false, id = null }) =
                     setDesc('')
                 })
                 .catch((error) => {
-                    if (error.response.status === 422) {
+                    if (error.response?.status === 422) {
                         toast.error(error.response.data.details[0].message)
                     } else {
                         toast.error('Something went wrong')
                     }
                 })
         } else {
-            axios.put(`http://localhost:9000/project/${id}`, { title, description: desc })
+            axios.put(`http://localhost:9000/project/${id}`, { 
+                title, 
+                description: desc, 
+                userId
+            })
                 .then((res) => {
                     closeModal()
                     const customEvent = new CustomEvent('projectUpdate', { detail: { ...res.data } });
@@ -54,7 +71,7 @@ const AddProjectModal = ({ isModalOpen, closeModal, edit = false, id = null }) =
                     setDesc('')
                 })
                 .catch((error) => {
-                    if (error.response.status === 422) {
+                    if (error.response?.status === 422) {
                         toast.error(error.response.data.details[0].message)
                     } else {
                         toast.error('Something went wrong')

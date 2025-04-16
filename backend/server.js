@@ -1,28 +1,33 @@
 import express from "express";
-import api from './routes/index.js'
-import dotenv from 'dotenv'
+import api from './routes/index.js';
+import authRoutes from './routes/authentication.js';
+import dotenv from 'dotenv';
 import mongoose from "mongoose";
 import cors from "cors";
+import './config/passport.js';
 
-dotenv.config()
+
+dotenv.config();
+
 mongoose.connect(process.env.MONGODB_PATH, () => {
-    console.log('connect');
-}, (e) => console.log(e))
+    console.log('MongoDB connected');
+}, (e) => console.log(e));
 
+const PORT = process.env.SERVER_PORT || 9000;
+const origin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
-const PORT = process.env.SERVER_PORT || 9000
-const origin = process.env.CORS_ORIGIN || 'http://localhost:3000'
+const app = express();
 
-const app = express()
+app.use(cors({ origin }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({
-    origin
-}));
-app.use(express.json())
-app.use(express.urlencoded())
+// Mount auth routes
+app.use('/api/auth', authRoutes);
 
-app.use(api)
+// Mount other API routes
+app.use(api);
 
 app.listen(PORT, () => {
-    console.log(`Your app is running in http://localhost:${PORT}`)
-})
+    console.log(`Your app is running at http://localhost:${PORT}`);
+});
