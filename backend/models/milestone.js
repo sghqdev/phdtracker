@@ -30,5 +30,5 @@ const MilestoneSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-const Milestone = mongoose.model('Milestone', MilestoneSchema);
+const Milestone = mongoose.models.Milestone || mongoose.model('Milestone', MilestoneSchema);
 export default Milestone;

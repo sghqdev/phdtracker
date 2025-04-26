@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Popover } from '@headlessui/react'
-import AddTaskModal from './AddTaskModal'
+import AddTaskModal from './AddMilestoneModal'
 
 const DropdownMenu = ({ taskId, handleDelete, projectId, setRenderChange }) => {
     const [isEditTaskModalOpen, setEditTaskModal] = useState(false);
