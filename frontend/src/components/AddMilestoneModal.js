@@ -8,6 +8,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     description: '',
     dueDate: '',
     status: 'Planned',
+    isMajor: false,
   });
 
   useEffect(() => {
@@ -17,6 +18,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         description: milestoneToEdit.description,
         dueDate: milestoneToEdit.dueDate ? milestoneToEdit.dueDate.split('T')[0] : '',
         status: milestoneToEdit.status,
+        isMajor: milestoneToEdit.isMajor || false,
       });
     } else {
       setFormData({
@@ -24,6 +26,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         description: '',
         dueDate: '',
         status: 'Planned',
+        isMajor: false,
       });
     }
   }, [milestoneToEdit]);
@@ -53,7 +56,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
           title: formData.title,
           description: formData.description,
           dueDate: formData.dueDate,
-          status: formData.status
+          status: formData.status,
+          isMajor: formData.isMajor
         });
         toast.success('Milestone updated successfully!');
       } else {
@@ -64,7 +68,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
           title: formData.title,
           description: formData.description,
           dueDate: formData.dueDate,
-          status: formData.status
+          status: formData.status,
+          isMajor: formData.isMajor
         });
         toast.success('Milestone created successfully!');
       }
@@ -129,6 +134,19 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               <option value="Completed">Completed</option>
             </select>
           </div>
+          <div>
+            <label className="inline-flex items-center mt-2">
+              <input
+                type="checkbox"
+                name="isMajor"
+                checked={formData.isMajor}
+                onChange={(e) => setFormData({ ...formData, isMajor: e.target.checked })}
+                className="form-checkbox text-indigo-600"
+              />
+              <span className="ml-2 text-gray-700">Mark as Major Milestone</span>
+            </label>
+          </div>
+
           <div className="flex justify-end space-x-2">
             <button
               type="button"

@@ -173,10 +173,15 @@ function StudentDashboard() {
                       <div {...provided.droppableProps} ref={provided.innerRef} className={`min-h-[500px] p-2 rounded-md border-2 ${snapshot.isDraggingOver ? 'border-indigo-600' : 'border-transparent'}`}>
                         {column.items.map((item, index) => (
                           <Draggable key={item._id} draggableId={item._id} index={index}>
+                            {/*major? */}
                             {(provided) => (
                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="bg-white border border-gray-200 rounded-md shadow-sm mb-2 p-3 cursor-pointer">
-                                <div className="flex flex-col space-y-1">
+                                <div className="flex justify-between items-center mb-1">
                                   <h3 className="font-semibold text-gray-800 text-sm">{item.title}</h3>
+                                  {item.isMajor && <span title="Major Milestone" className="text-yellow-400">⭐</span>}
+                                </div>
+                                {/* Milestone Description */}
+                                <div className="flex flex-col space-y-1">
                                   <div className="text-xs text-gray-500">
                                     {item.dueDate ? (
                                       <>
@@ -189,6 +194,8 @@ function StudentDashboard() {
                                   <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-2">
                                     <div className="h-full rounded-full" style={{ width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`, backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc' }}></div>
                                   </div>
+
+                                  {/* Action Buttons */}
                                   <div className="flex justify-around mt-2 text-gray-500">
                                     <FaPen className="cursor-pointer hover:text-indigo-600" size={14} onClick={() => handleEdit(item)} />
                                     <FaTrash className="cursor-pointer hover:text-red-500" size={14} onClick={() => handleDelete(item._id)} />
