@@ -20,7 +20,7 @@ const origin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({ origin }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -31,7 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use(api);
 
 // Mount milestone routes
-app.use('/api', milestoneRoutes);
+app.use('/api/milestones', milestoneRoutes);
 
 app.use('/api/students', studentRoutes);
 

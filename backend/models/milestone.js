@@ -15,10 +15,10 @@ const MilestoneSchema = new mongoose.Schema({
     required: true,
   },
   status: {
-    type: String,
-    enum: ['Not Started', 'In Progress', 'Completed'],
-    default: 'Not Started',
-  },
+  type: String,
+  enum: ['Planned', 'InProgress', 'PendingApproval', 'Completed'], // Ensure these match the frontend
+  default: 'Planned',
+},
   dueDate: {
     type: Date,
     required: false,

@@ -1,18 +1,21 @@
+// Updated StudentDashboard.js with Edit and Delete
+
 import React, { useEffect, useState } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
-import { useParams, useNavigate, useLocation } from "react-router";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
+import { FaPen, FaTrash } from "react-icons/fa";
 
 const FIXED_COLUMNS = {
-  planned: "Planned",
-  inProgress: "In Progress",
-  pendingApproval: "Pending Approval",
-  completed: "Completed",
+  Planned: "Planned",
+  InProgress: "In Progress",
+  PendingApproval: "Pending Approval",
+  Completed: "Completed",
 };
 
-const onDragEnd = (result, columns, setColumns, currentProjectId) => {
+const onDragEnd = (result, columns, setColumns) => {
   if (!result.destination) return;
 
   const { source, destination } = result;
@@ -53,72 +56,62 @@ const onDragEnd = (result, columns, setColumns, currentProjectId) => {
   }
 
   setColumns(updatedColumns);
-
-  if (currentProjectId) {
-    axios
-      .put(`http://localhost:9000/project/${currentProjectId}/todo`, updatedColumns)
-      .then(() => toast.success("Task order updated"))
-      .catch(() => toast.error("Failed to update task order"));
-  }
 };
 
 function StudentDashboard() {
-  const { projectId } = useParams();
   const navigate = useNavigate();
-  const [currentProjectId, setCurrentProjectId] = useState(null);
   const [columns, setColumns] = useState({});
-  const [title, setTitle] = useState("");
   const [isAddMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
+  const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user?.id) {
-      axios.get(`http://localhost:9000/user/${user.id}/projects`)
-        .then((res) => {
-          if (res.data.length > 0) {
-            setCurrentProjectId(res.data[0]._id);
-          } else {
-            setCurrentProjectId(null); // No projects found
-          }
-        })
-        .catch(() => toast.error("Error fetching projects"));
-    }
-  }, []);
+    fetchMilestones();
+  }, [isAddMilestoneModalOpen, isRenderChange]);
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!projectId && user?.id) {
-      axios.get(`http://localhost:9000/user/${user.id}/projects`).then((res) => {
-        if (res.data.length > 0) {
-          setCurrentProjectId(res.data[0]._id);
-          navigate(`/student-dashboard/${res.data[0]._id}`);
-        } else {
-          setCurrentProjectId(null);
-        }
-      }).catch(() => toast.error("Error fetching projects"));
-    } else {
-      setCurrentProjectId(projectId);
-    }
-  }, [projectId, navigate]);
+  const fetchMilestones = async () => {
+    const storedStudent = JSON.parse(localStorage.getItem("student") || "{}");
+    if (storedStudent.id) {
+      try {
+        const response = await axios.get(`http://localhost:9000/api/milestones/student/${storedStudent.id}`);
+        const milestoneData = response.data;
 
-  useEffect(() => {
-    if (currentProjectId && (!isAddMilestoneModalOpen || isRenderChange)) {
-      axios.get(`http://localhost:9000/project/${currentProjectId}`).then((res) => {
-        const taskData = res.data[0].task;
-        setTitle(res.data[0].title);
         const newColumns = {};
         Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
           newColumns[key] = {
             name,
-            items: taskData.filter(task => task.stage === name).sort((a, b) => a.order - b.order),
+            items: milestoneData.filter(m => m.status === key)
           };
         });
+
         setColumns(newColumns);
-        setRenderChange(false);
-      }).catch(() => toast.error("Something went wrong"));
+      } catch (error) {
+        console.error("Failed to load milestones", error);
+        toast.error("Failed to load milestones");
+      }
     }
-  }, [currentProjectId, isAddMilestoneModalOpen, isRenderChange]);
+  };
+
+  const handleDeleteMilestone = async (id) => {
+    try {
+      await axios.delete(`http://localhost:9000/api/milestones/${id}`);
+      toast.success("Milestone deleted");
+      setRenderChange(prev => !prev);
+    } catch (error) {
+      console.error("Delete failed", error);
+      toast.error("Failed to delete milestone");
+    }
+  };
+
+  const openEditMilestone = (milestone) => {
+    setMilestoneToEdit(milestone);
+    setAddMilestoneModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setAddMilestoneModalOpen(false);
+    setMilestoneToEdit(null);
+  };
 
   return (
     <div className="flex h-screen bg-white">
@@ -129,7 +122,6 @@ function StudentDashboard() {
           <div className="text-sm text-gray-700 font-medium">Student Profile</div>
           <ul className="space-y-2 mt-2">
             <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
-            <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Dashboard</li>
             <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
             <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
           </ul>
@@ -148,51 +140,59 @@ function StudentDashboard() {
         </header>
 
         <main className="p-6 overflow-auto">
-          {currentProjectId ? (
-            <DragDropContext onDragEnd={(result) => onDragEnd(result, columns, setColumns, currentProjectId)}>
-              <div className="flex gap-6 overflow-x-auto">
-                {Object.entries(columns).map(([columnId, column]) => (
-                  <div key={columnId} className="w-[23%] min-w-[250px]">
-                    <div className="mb-2 font-semibold text-sm uppercase text-gray-600 flex justify-between">
-                      {column.name}
-                      {column.items.length > 0 && <span className="text-xs text-gray-400">{column.items.length}</span>}
-                    </div>
-                    <Droppable droppableId={columnId}>
-                      {(provided, snapshot) => (
-                        <div {...provided.droppableProps} ref={provided.innerRef} className={`min-h-[500px] p-2 rounded-md border-2 ${snapshot.isDraggingOver ? 'border-indigo-600' : 'border-transparent'}`}>
-                          {column.items.map((item, index) => (
-                            <Draggable key={item._id} draggableId={item._id} index={index}>
-                              {(provided) => (
-                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="bg-white border border-gray-200 rounded-md shadow-sm mb-2 p-3 cursor-pointer">
-                                  <h3 className="text-sm font-medium text-gray-800 truncate">{item.title}</h3>
-                                  <p className="text-xs text-gray-500 mt-1 truncate">{item.description}</p>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
+          <DragDropContext onDragEnd={(result) => onDragEnd(result, columns, setColumns)}>
+            <div className="flex gap-6 overflow-x-auto">
+              {Object.entries(columns).map(([columnId, column]) => (
+                <div key={columnId} className="w-[23%] min-w-[250px]">
+                  <div className="mb-2 font-semibold text-sm uppercase text-gray-600 flex justify-between">
+                    {column.name}
+                    {column.items.length > 0 && <span className="text-xs text-gray-400">{column.items.length}</span>}
                   </div>
-                ))}
-              </div>
-            </DragDropContext>
-          ) : (
-            <div className="text-center text-gray-500">
-              <p>No Milestones found. Start by creating a new Milestone!</p>
+                  <Droppable droppableId={columnId}>
+                    {(provided, snapshot) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className={`min-h-[500px] p-2 rounded-md border-2 ${snapshot.isDraggingOver ? 'border-indigo-600' : 'border-transparent'}`}>
+                        {column.items.map((item, index) => (
+                          <Draggable key={item._id} draggableId={item._id} index={index}>
+                            {(provided) => (
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="bg-white border border-gray-200 rounded-md shadow-sm mb-2 p-3 cursor-pointer">
+                                <div className="flex flex-col space-y-1">
+                                  <h3 className="font-semibold text-gray-800">{item.title}</h3>
+                                  <div className="text-xs text-gray-500">
+                                    {item.dueDate ? (
+                                      <>
+                                        {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br />
+                                        {new Date(item.dueDate).toLocaleDateString()}
+                                      </>
+                                    ) : "No Due Date"}
+                                  </div>
+                                  <div className="flex justify-around mt-2 text-gray-500">
+                                    <FaPen className="cursor-pointer hover:text-indigo-600" size={14} onClick={() => openEditMilestone(item)} />
+                                    <FaTrash className="cursor-pointer hover:text-red-500" size={14} onClick={() => handleDeleteMilestone(item._id)} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              ))}
             </div>
-          )}
+          </DragDropContext>
         </main>
       </div>
 
       {isAddMilestoneModalOpen && (
         <AddMilestoneModal
           isOpen={isAddMilestoneModalOpen}
-          onClose={() => setAddMilestoneModalOpen(false)}
+          onClose={closeModal}
           studentId={JSON.parse(localStorage.getItem('student') || '{}')?.id}
           userId={JSON.parse(localStorage.getItem('user') || '{}')?.id}
-          refreshMilestones={() => setRenderChange(true)}
+          refreshMilestones={() => setRenderChange(prev => !prev)}
+          milestoneToEdit={milestoneToEdit}
         />
       )}
     </div>

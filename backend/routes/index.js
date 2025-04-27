@@ -1,7 +1,7 @@
 import express from 'express';
 import joi from 'joi';
 import mongoose from 'mongoose';
-import Project from '../models/index.js'
+import Project from '../models/milestone.js'
 import User from '../models/user.js'
 
 const api = express.Router()

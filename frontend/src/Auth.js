@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { FcGoogle } from "react-icons/fc";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -61,8 +60,12 @@ export default function AuthPage() {
 
       const response = await axios.post(`http://localhost:9000/api/auth${endpoint}`, userData);
 
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      const { token, user, student } = response.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      if (student) localStorage.setItem("student", JSON.stringify(student));
 
       toast.success(isLogin ? "Logged in successfully" : "Account created successfully");
       

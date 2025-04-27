@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
-function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMilestones }) {
+function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMilestones, milestoneToEdit = null }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     dueDate: '',
-    status: 'Not Started'
+    status: 'Planned', // Default to "Planned"
   });
+
+  if (!isOpen) return null;
 
   const handleChange = (e) => {
     setFormData({
@@ -18,8 +21,15 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!studentId || !userId) {
+      toast.error('Missing required IDs. Cannot create milestone.');
+      console.error('Missing studentId or userId', { studentId, userId });
+      return;
+    }
+
     try {
-      await axios.post('/api/milestones', {
+      await axios.post('http://localhost:9000/api/milestones', {
         studentId,
         userId,
         title: formData.title,
@@ -27,15 +37,15 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         dueDate: formData.dueDate,
         status: formData.status
       });
+
+      toast.success('Milestone created successfully!');
       refreshMilestones();
       onClose();
     } catch (error) {
-      console.error('Error creating milestone:', error);
-      alert('Failed to create milestone.');
+      console.error('Error creating milestone:', error.response?.data || error.message);
+      toast.error('Failed to create milestone.');
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -44,32 +54,32 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Title</label>
-            <input 
-              type="text" 
-              name="title" 
-              value={formData.title} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
               className="w-full p-2 border rounded-md"
               required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea 
-              name="description" 
-              value={formData.description} 
-              onChange={handleChange} 
-              className="w-full p-2 border rounded-md" 
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
               required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Due Date</label>
-            <input 
-              type="date" 
-              name="dueDate" 
-              value={formData.dueDate} 
-              onChange={handleChange} 
+            <input
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleChange}
               className="w-full p-2 border rounded-md"
             />
           </div>
@@ -81,21 +91,22 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
             >
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
+              <option value='Planned'>Planned</option>
+              <option value='InProgress'>In Progress</option> {/* Match backend enum */}
+              <option value='PendingApproval'>Pending Approval</option> {/* Match backend enum */}
               <option value="Completed">Completed</option>
             </select>
           </div>
           <div className="flex justify-end space-x-2">
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               className="px-4 py-2 bg-gray-300 rounded-md"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded-md"
             >
               Save
@@ -106,5 +117,6 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     </div>
   );
 }
+
 
 export default AddMilestoneModal;

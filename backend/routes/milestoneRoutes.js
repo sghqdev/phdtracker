@@ -7,7 +7,8 @@ const router = express.Router();
 // CREATE a Milestone
 router.post('/', async (req, res) => {
   try {
-    const milestone = new Milestone(req.body);
+    const milestoneData = { ...req.body, status: req.body.status || 'Planned' }; // Default to "Planned"
+    const milestone = new Milestone(milestoneData);
     const savedMilestone = await milestone.save();
     res.status(201).json(savedMilestone);
   } catch (err) {
@@ -35,7 +36,8 @@ router.put('/:id', async (req, res) => {
 // GET all Milestones for a Student
 router.get('/student/:studentId', async (req, res) => {
   try {
-    const milestones = await Milestone.find({ studentId: req.params.studentId });
+    const { studentId } = req.params;
+    const milestones = await Milestone.find({ studentId });
     res.json(milestones);
   } catch (err) {
     res.status(400).json({ error: err.message });
