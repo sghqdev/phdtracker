@@ -22,21 +22,24 @@ const PROGRESS_BY_STATUS = {
   Completed: { percent: 100, color: "#22c55e" }, // Green
 };
 
-const onDragEnd = (result, columns, setColumns) => {
+const onDragEnd = async (result, columns, setColumns) => {
   if (!result.destination) return;
 
   const { source, destination } = result;
-  let updatedColumns = {};
 
+  // Get the dragged milestone
+  const sourceColumn = columns[source.droppableId];
+  const draggedItem = sourceColumn.items[source.index];
+
+  // If moving to a different column (status change)
   if (source.droppableId !== destination.droppableId) {
-    const sourceColumn = columns[source.droppableId];
     const destColumn = columns[destination.droppableId];
     const sourceItems = [...sourceColumn.items];
     const destItems = [...destColumn.items];
     const [removed] = sourceItems.splice(source.index, 1);
     destItems.splice(destination.index, 0, removed);
 
-    updatedColumns = {
+    const updatedColumns = {
       ...columns,
       [source.droppableId]: {
         ...sourceColumn,
@@ -47,23 +50,38 @@ const onDragEnd = (result, columns, setColumns) => {
         items: destItems,
       },
     };
+
+    setColumns(updatedColumns);
+
+    try {
+      // Update the milestone status in the backend
+      await axios.put(`http://localhost:9000/api/milestones/${draggedItem._id}`, {
+        status: destination.droppableId,
+      });
+      toast.success("Milestone status updated!");
+    } catch (error) {
+      console.error("Error updating milestone status:", error.response?.data || error.message);
+      toast.error("Failed to update milestone status.");
+    }
   } else {
+    // If dragging within the same column, no status change — just reorder
     const column = columns[source.droppableId];
     const copiedItems = [...column.items];
     const [removed] = copiedItems.splice(source.index, 1);
     copiedItems.splice(destination.index, 0, removed);
 
-    updatedColumns = {
+    const updatedColumns = {
       ...columns,
       [source.droppableId]: {
         ...column,
         items: copiedItems,
       },
     };
-  }
 
-  setColumns(updatedColumns);
+    setColumns(updatedColumns);
+  }
 };
+
 
 function StudentDashboard() {
   const navigate = useNavigate();
