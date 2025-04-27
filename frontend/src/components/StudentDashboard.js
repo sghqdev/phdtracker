@@ -27,19 +27,21 @@ const onDragEnd = async (result, columns, setColumns) => {
 
   const { source, destination } = result;
 
-  // Get the dragged milestone
   const sourceColumn = columns[source.droppableId];
-  const draggedItem = sourceColumn.items[source.index];
+  const destColumn = columns[destination.droppableId];
+  const sourceItems = [...sourceColumn.items];
+  const destItems = [...destColumn.items];
+  const [movedItem] = sourceItems.splice(source.index, 1);
 
-  // If moving to a different column (status change)
+  let updatedColumns = {};
+
   if (source.droppableId !== destination.droppableId) {
-    const destColumn = columns[destination.droppableId];
-    const sourceItems = [...sourceColumn.items];
-    const destItems = [...destColumn.items];
-    const [removed] = sourceItems.splice(source.index, 1);
-    destItems.splice(destination.index, 0, removed);
+    // Change the milestone's status locally
+    movedItem.status = destination.droppableId; 
 
-    const updatedColumns = {
+    destItems.splice(destination.index, 0, movedItem);
+
+    updatedColumns = {
       ...columns,
       [source.droppableId]: {
         ...sourceColumn,
@@ -55,8 +57,8 @@ const onDragEnd = async (result, columns, setColumns) => {
 
     try {
       // Update the milestone status in the backend
-      await axios.put(`http://localhost:9000/api/milestones/${draggedItem._id}`, {
-        status: destination.droppableId,
+      await axios.put(`http://localhost:9000/api/milestones/${movedItem._id}`, {
+        status: movedItem.status,
       });
       toast.success("Milestone status updated!");
     } catch (error) {
@@ -64,16 +66,15 @@ const onDragEnd = async (result, columns, setColumns) => {
       toast.error("Failed to update milestone status.");
     }
   } else {
-    // If dragging within the same column, no status change — just reorder
-    const column = columns[source.droppableId];
-    const copiedItems = [...column.items];
-    const [removed] = copiedItems.splice(source.index, 1);
-    copiedItems.splice(destination.index, 0, removed);
+    // Just reordering within the same column
+    const copiedItems = [...sourceColumn.items];
+    const [reorderedItem] = copiedItems.splice(source.index, 1);
+    copiedItems.splice(destination.index, 0, reorderedItem);
 
-    const updatedColumns = {
+    updatedColumns = {
       ...columns,
       [source.droppableId]: {
-        ...column,
+        ...sourceColumn,
         items: copiedItems,
       },
     };
@@ -81,6 +82,7 @@ const onDragEnd = async (result, columns, setColumns) => {
     setColumns(updatedColumns);
   }
 };
+
 
 
 function StudentDashboard() {
