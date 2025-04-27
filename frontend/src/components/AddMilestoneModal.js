@@ -1,4 +1,3 @@
-// AddMilestoneModal.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -14,10 +13,10 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
   useEffect(() => {
     if (milestoneToEdit) {
       setFormData({
-        title: milestoneToEdit.title || '',
-        description: milestoneToEdit.description || '',
-        dueDate: milestoneToEdit.dueDate ? new Date(milestoneToEdit.dueDate).toISOString().split('T')[0] : '',
-        status: milestoneToEdit.status || 'Planned',
+        title: milestoneToEdit.title,
+        description: milestoneToEdit.description,
+        dueDate: milestoneToEdit.dueDate ? milestoneToEdit.dueDate.split('T')[0] : '',
+        status: milestoneToEdit.status,
       });
     } else {
       setFormData({
@@ -42,14 +41,14 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     e.preventDefault();
 
     if (!studentId || !userId) {
-      toast.error('Missing required IDs. Cannot save milestone.');
+      toast.error('Missing required IDs.');
       console.error('Missing studentId or userId', { studentId, userId });
       return;
     }
 
     try {
       if (milestoneToEdit) {
-        // Update existing milestone
+        // UPDATE existing milestone
         await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, {
           title: formData.title,
           description: formData.description,
@@ -58,7 +57,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         });
         toast.success('Milestone updated successfully!');
       } else {
-        // Create new milestone
+        // CREATE new milestone
         await axios.post('http://localhost:9000/api/milestones', {
           studentId,
           userId,
@@ -125,8 +124,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               className="w-full p-2 border rounded-md"
             >
               <option value="Planned">Planned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Pending Approval">Pending Approval</option>
+              <option value="InProgress">In Progress</option>
+              <option value="PendingApproval">Pending Approval</option>
               <option value="Completed">Completed</option>
             </select>
           </div>

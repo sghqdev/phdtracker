@@ -1,4 +1,4 @@
-// Updated StudentDashboard.js with Edit and Delete
+// Updated StudentDashboard.js with Progress Bars on Cards
 
 import React, { useEffect, useState } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
@@ -13,6 +13,13 @@ const FIXED_COLUMNS = {
   InProgress: "In Progress",
   PendingApproval: "Pending Approval",
   Completed: "Completed",
+};
+
+const PROGRESS_BY_STATUS = {
+  Planned: { percent: 10, color: "#a78bfa" }, // Light Purple
+  InProgress: { percent: 50, color: "#6366f1" }, // Indigo
+  PendingApproval: { percent: 80, color: "#f59e0b" }, // Orange
+  Completed: { percent: 100, color: "#22c55e" }, // Green
 };
 
 const onDragEnd = (result, columns, setColumns) => {
@@ -80,37 +87,30 @@ function StudentDashboard() {
         Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
           newColumns[key] = {
             name,
-            items: milestoneData.filter(m => m.status === key)
+            items: milestoneData.filter(m => m.status === key),
           };
         });
 
         setColumns(newColumns);
       } catch (error) {
-        console.error("Failed to load milestones", error);
         toast.error("Failed to load milestones");
       }
     }
   };
 
-  const handleDeleteMilestone = async (id) => {
-    try {
-      await axios.delete(`http://localhost:9000/api/milestones/${id}`);
-      toast.success("Milestone deleted");
-      setRenderChange(prev => !prev);
-    } catch (error) {
-      console.error("Delete failed", error);
-      toast.error("Failed to delete milestone");
-    }
-  };
-
-  const openEditMilestone = (milestone) => {
+  const handleEdit = (milestone) => {
     setMilestoneToEdit(milestone);
     setAddMilestoneModalOpen(true);
   };
 
-  const closeModal = () => {
-    setAddMilestoneModalOpen(false);
-    setMilestoneToEdit(null);
+  const handleDelete = async (milestoneId) => {
+    try {
+      await axios.delete(`http://localhost:9000/api/milestones/${milestoneId}`);
+      toast.success("Milestone deleted");
+      setRenderChange(prev => !prev);
+    } catch (error) {
+      toast.error("Failed to delete milestone");
+    }
   };
 
   return (
@@ -156,7 +156,7 @@ function StudentDashboard() {
                             {(provided) => (
                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="bg-white border border-gray-200 rounded-md shadow-sm mb-2 p-3 cursor-pointer">
                                 <div className="flex flex-col space-y-1">
-                                  <h3 className="font-semibold text-gray-800">{item.title}</h3>
+                                  <h3 className="font-semibold text-gray-800 text-sm">{item.title}</h3>
                                   <div className="text-xs text-gray-500">
                                     {item.dueDate ? (
                                       <>
@@ -165,9 +165,13 @@ function StudentDashboard() {
                                       </>
                                     ) : "No Due Date"}
                                   </div>
+                                  {/* Progress Bar */}
+                                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-2">
+                                    <div className="h-full rounded-full" style={{ width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`, backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc' }}></div>
+                                  </div>
                                   <div className="flex justify-around mt-2 text-gray-500">
-                                    <FaPen className="cursor-pointer hover:text-indigo-600" size={14} onClick={() => openEditMilestone(item)} />
-                                    <FaTrash className="cursor-pointer hover:text-red-500" size={14} onClick={() => handleDeleteMilestone(item._id)} />
+                                    <FaPen className="cursor-pointer hover:text-indigo-600" size={14} onClick={() => handleEdit(item)} />
+                                    <FaTrash className="cursor-pointer hover:text-red-500" size={14} onClick={() => handleDelete(item._id)} />
                                   </div>
                                 </div>
                               </div>
@@ -188,7 +192,10 @@ function StudentDashboard() {
       {isAddMilestoneModalOpen && (
         <AddMilestoneModal
           isOpen={isAddMilestoneModalOpen}
-          onClose={closeModal}
+          onClose={() => {
+            setAddMilestoneModalOpen(false);
+            setMilestoneToEdit(null);
+          }}
           studentId={JSON.parse(localStorage.getItem('student') || '{}')?.id}
           userId={JSON.parse(localStorage.getItem('user') || '{}')?.id}
           refreshMilestones={() => setRenderChange(prev => !prev)}
