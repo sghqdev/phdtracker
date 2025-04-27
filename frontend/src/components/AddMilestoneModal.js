@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// AddMilestoneModal.js
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -7,8 +8,26 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     title: '',
     description: '',
     dueDate: '',
-    status: 'Planned', // Default to "Planned"
+    status: 'Planned',
   });
+
+  useEffect(() => {
+    if (milestoneToEdit) {
+      setFormData({
+        title: milestoneToEdit.title || '',
+        description: milestoneToEdit.description || '',
+        dueDate: milestoneToEdit.dueDate ? new Date(milestoneToEdit.dueDate).toISOString().split('T')[0] : '',
+        status: milestoneToEdit.status || 'Planned',
+      });
+    } else {
+      setFormData({
+        title: '',
+        description: '',
+        dueDate: '',
+        status: 'Planned',
+      });
+    }
+  }, [milestoneToEdit]);
 
   if (!isOpen) return null;
 
@@ -23,34 +42,48 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     e.preventDefault();
 
     if (!studentId || !userId) {
-      toast.error('Missing required IDs. Cannot create milestone.');
+      toast.error('Missing required IDs. Cannot save milestone.');
       console.error('Missing studentId or userId', { studentId, userId });
       return;
     }
 
     try {
-      await axios.post('http://localhost:9000/api/milestones', {
-        studentId,
-        userId,
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate,
-        status: formData.status
-      });
+      if (milestoneToEdit) {
+        // Update existing milestone
+        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          status: formData.status
+        });
+        toast.success('Milestone updated successfully!');
+      } else {
+        // Create new milestone
+        await axios.post('http://localhost:9000/api/milestones', {
+          studentId,
+          userId,
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          status: formData.status
+        });
+        toast.success('Milestone created successfully!');
+      }
 
-      toast.success('Milestone created successfully!');
       refreshMilestones();
       onClose();
     } catch (error) {
-      console.error('Error creating milestone:', error.response?.data || error.message);
-      toast.error('Failed to create milestone.');
+      console.error('Error saving milestone:', error.response?.data || error.message);
+      toast.error('Failed to save milestone.');
     }
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Milestone</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          {milestoneToEdit ? 'Edit Milestone' : 'Add New Milestone'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Title</label>
@@ -91,9 +124,9 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
             >
-              <option value='Planned'>Planned</option>
-              <option value='InProgress'>In Progress</option> {/* Match backend enum */}
-              <option value='PendingApproval'>Pending Approval</option> {/* Match backend enum */}
+              <option value="Planned">Planned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Pending Approval">Pending Approval</option>
               <option value="Completed">Completed</option>
             </select>
           </div>
@@ -109,7 +142,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded-md"
             >
-              Save
+              {milestoneToEdit ? 'Update' : 'Save'}
             </button>
           </div>
         </form>
@@ -117,6 +150,5 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     </div>
   );
 }
-
 
 export default AddMilestoneModal;
