@@ -132,21 +132,42 @@ function StudentDashboard() {
       toast.error("Failed to delete milestone");
     }
   };
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('student'); // if you stored student separately
+    toast.success("Signed out successfully!");
+    navigate("/"); 
+  };
+  
 
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6">
-        <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-700 font-medium">Student Profile</div>
-          <ul className="space-y-2 mt-2">
-            <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
-            <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
-            <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
-          </ul>
-        </div>
-      </aside>
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+  <div>
+    <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+    <div className="space-y-4">
+      <div className="text-sm text-gray-700 font-medium">Student Profile</div>
+      <ul className="space-y-2 mt-2">
+        <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
+        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
+        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
+      </ul>
+    </div>
+  </div>
+
+  {/* Sign Out button */}
+  <div className="space-y-2">
+    <div
+      className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+      onClick={handleSignOut}
+    >
+      Sign Out
+    </div>
+  </div>
+</aside>
+
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
