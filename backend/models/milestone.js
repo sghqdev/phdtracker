@@ -28,6 +28,10 @@ const MilestoneSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  isMajor: { 
+    type: Boolean, 
+    default: false 
+  },
 }, { timestamps: true });
 
 const Milestone = mongoose.models.Milestone || mongoose.model('Milestone', MilestoneSchema);
