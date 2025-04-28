@@ -4,6 +4,8 @@ import Task from "./components/Task";
 import LandingPage from "./landingpage"; 
 import { Toaster } from "react-hot-toast";
 import AuthPage from './Auth';
+import StudentDashboard from "./components/StudentDashboard";
+import MilestonePage from "./components/MileStone";
 
 {/*
 function App() {
@@ -40,19 +42,16 @@ export default App;
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/student-dashboard" element={
-          <AppLayout>
-            <Task />
-          </AppLayout>
-        } />
+          <StudentDashboard />
+        } /> 
         <Route path="/student-dashboard/:projectId" element={
-          <AppLayout>
-            <Task />
-          </AppLayout>
+            <StudentDashboard />
         } />
         <Route path="/:projectId" element={
-          <AppLayout>
-            <Task />
-          </AppLayout>
+            <StudentDashboard />
+        } />
+        <Route path="/milestones" element={
+            <MilestonePage />
         } />
       </Routes>
     </>

@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import mongoose from "mongoose";
 import cors from "cors";
 import './config/passport.js';
+import milestoneRoutes from './routes/milestoneRoutes.js';
+import studentRoutes from './routes/studentRoutes.js';
 
 
 dotenv.config();
@@ -27,6 +29,11 @@ app.use('/api/auth', authRoutes);
 
 // Mount other API routes
 app.use(api);
+
+// Mount milestone routes
+app.use('/api/milestones', milestoneRoutes);
+
+app.use('/api/students', studentRoutes);
 
 app.listen(PORT, () => {
     console.log(`Your app is running at http://localhost:${PORT}`);

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { FcGoogle } from "react-icons/fc";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -20,14 +19,14 @@ export default function AuthPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    //validation for login
+    // Validation for login
     if (isLogin) {
       if (!email || !password) {
         toast.error("Please fill in all fields");
         return;
       }
     } 
-    //validation for signup
+    // Validation for signup
     else {
       if (!email || !password || !confirmPassword || !firstName || !lastName || !program || !department) {
         toast.error("Please fill in all fields");
@@ -61,21 +60,17 @@ export default function AuthPage() {
 
       const response = await axios.post(`http://localhost:9000/api/auth${endpoint}`, userData);
 
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      const { token, user, student } = response.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      if (student) localStorage.setItem("student", JSON.stringify(student));
 
       toast.success(isLogin ? "Logged in successfully" : "Account created successfully");
       
-      // Redirect based on user role
-      if (response.data.user.role === "student") {
-        navigate("/student-dashboard");
-      } else if (response.data.user.role === "advisor") {
-        navigate("/advisor-dashboard");
-      } else if (response.data.user.role === "admin") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/");
-      }
+      // Redirect to the student dashboard
+      navigate("/student-dashboard");
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
     }
@@ -186,17 +181,6 @@ export default function AuthPage() {
             {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
           </button>
         </div>
-        
-        {/*removed the google signup option
-        <div className="mt-6">
-          <button
-            onClick={() => window.location.href = "http://localhost:3000/auth/google"}
-            className="flex items-center justify-center w-full border border-gray-300 rounded py-2 hover:bg-gray-50"
-          >
-            <FcGoogle className="mr-2" />
-            Continue with Google
-          </button>
-        </div> */}
       </div>
     </div>
   );

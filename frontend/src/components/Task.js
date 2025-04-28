@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { v4 as uuid } from "uuid";
-import AddTaskModal from "./AddTaskModal";
+import AddTaskModal from "./AddMilestoneModal";
 import BtnPrimary from './BtnPrimary'
 import DropdownMenu from "./DropdownMenu";
 // import TaskModal from "./TaskModal";

@@ -1,10 +1,12 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.js';
+import Student from '../models/student.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+// SIGNUP
 export const signup = async (req, res) => {
   const { email, password, first_name, last_name, role, program, department } = req.body;
   try {
@@ -14,9 +16,9 @@ export const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const newUser = await User.create({ 
-      email, 
+
+    const newUser = await User.create({
+      email,
       password: hashedPassword,
       first_name,
       last_name,
@@ -25,10 +27,29 @@ export const signup = async (req, res) => {
       department
     });
 
-    // Create token
+    let profile = null;
+    const userRole = role.toLowerCase();
+
+    if (userRole === 'student') {
+      const newStudent = await Student.create({
+        userId: newUser._id,
+        firstname: first_name,
+        lastname: last_name,
+        major: program || '',
+        concentration: '',
+        programStatus: 'Active'
+      });
+      profile = { student: {
+        id: newStudent._id,
+        firstname: newStudent.firstname,
+        lastname: newStudent.lastname,
+        major: newStudent.major,
+        programStatus: newStudent.programStatus
+      }};
+    }
+
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    
-    // Return user data without password
+
     const user = {
       id: newUser._id,
       email: newUser.email,
@@ -39,17 +60,20 @@ export const signup = async (req, res) => {
       department: newUser.department
     };
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'User created successfully',
       token,
-      user
+      user,
+      ...profile
     });
+
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// LOGIN (Fully Updated!)
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -64,8 +88,7 @@ export const login = async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    
-    // Return user data without password
+
     const userData = {
       id: user._id,
       email: user.email,
@@ -76,11 +99,29 @@ export const login = async (req, res) => {
       department: user.department
     };
 
-    res.status(200).json({ 
+    let profile = null;
+    const userRole = user.role.toLowerCase();
+
+    if (userRole === 'student') {
+      const student = await Student.findOne({ userId: user._id });
+      if (student) {
+        profile = { student: {
+          id: student._id,
+          firstname: student.firstname,
+          lastname: student.lastname,
+          major: student.major,
+          programStatus: student.programStatus
+        }};
+      }
+    }
+
+    res.status(200).json({
       message: 'Login successful',
-      token, 
-      user: userData 
+      token,
+      user: userData,
+      ...profile
     });
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
