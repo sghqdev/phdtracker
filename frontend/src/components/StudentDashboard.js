@@ -133,11 +133,16 @@ function StudentDashboard() {
     }
   };
   const handleSignOut = () => {
+    // Clear all auth-related data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('student'); // if you stored student separately
-    toast.success("Signed out successfully!");
-    navigate("/"); 
+    localStorage.removeItem('student');
+    
+    // Clear any other session data you might have
+    sessionStorage.clear();
+    
+    // Force a hard redirect to the login page
+    window.location.href = '/auth';
   };
   
 
@@ -154,6 +159,7 @@ function StudentDashboard() {
         <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
         <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
         
+        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
       </ul>
     </div>
   </div>

@@ -6,9 +6,9 @@ const studentSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
-    advisor_id: { 
+    advisorId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Advisor' 
+        ref: 'User' 
     },
     firstname: { 
         type: String, 
@@ -24,8 +24,12 @@ const studentSchema = new mongoose.Schema({
     concentration: { 
         type: String 
     },
-    program_status: { 
-        type: String 
+    programStatus: { 
+        type: String,
+        default: 'Active'
+    },
+    email: {
+        type: String
     }
 }, { timestamps: true });
 
