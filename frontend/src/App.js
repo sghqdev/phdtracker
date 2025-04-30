@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import AuthPage from './Auth';
 import StudentDashboard from "./components/StudentDashboard";
 import MilestonePage from "./components/MileStone";
+import Profile from "./components/Profile";
 
 {/*function App() {
   console.log('render app..')
@@ -50,6 +51,7 @@ export default App;
         <Route path="/milestones" element={
             <MilestonePage />
         } />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </>
   );

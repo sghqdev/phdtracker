@@ -7,6 +7,7 @@ import cors from "cors";
 import './config/passport.js';
 import milestoneRoutes from './routes/milestoneRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 
 dotenv.config();
@@ -34,6 +35,9 @@ app.use(api);
 app.use('/api/milestones', milestoneRoutes);
 
 app.use('/api/students', studentRoutes);
+
+// Mount user routes
+app.use('/api/user', userRoutes);
 
 app.listen(PORT, () => {
     console.log(`Your app is running at http://localhost:${PORT}`);

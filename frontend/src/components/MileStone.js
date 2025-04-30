@@ -55,7 +55,9 @@ function MilestonePage() {
             <ul className="space-y-2 mt-2">
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student-dashboard")}>Home</li>
               <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">My Milestones</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
+              
+              
             </ul>
           </div>
         </div>

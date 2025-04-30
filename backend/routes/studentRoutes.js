@@ -1,5 +1,5 @@
 import express from 'express';
-import Student from '../models/student.js'; // Assuming model is at /models/student.js
+import Student from '../models/Student.js';
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
 // Get ALL Students
 router.get('/', async (req, res) => {
   try {
-    const students = await Student.find().populate('userId advisorId');
+    const students = await Student.find().populate('userId');
     res.json(students);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 // Get Single Student by ID
 router.get('/:id', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id).populate('userId advisorId');
+    const student = await Student.findById(req.params.id).populate('userId');
     if (!student) return res.status(404).json({ error: 'Student not found' });
     res.json(student);
   } catch (err) {

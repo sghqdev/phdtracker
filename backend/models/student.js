@@ -12,10 +12,12 @@ const studentSchema = new mongoose.Schema({
     },
     firstname: { 
         type: String, 
-        required: true },
+        required: true 
+    },
     lastname: { 
         type: String, 
-        required: true },
+        required: true 
+    },
     major: { 
         type: String 
     },
@@ -25,8 +27,8 @@ const studentSchema = new mongoose.Schema({
     program_status: { 
         type: String 
     }
-  }, { timestamps: true });;
-  
-  const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
-  export default mongoose.model('Student', studentSchema);
+}, { timestamps: true });
+
+const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
+export default Student;
   
