@@ -353,7 +353,7 @@ function AdminDashboard() {
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
         <div>
           <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker Admin</div>
           <div className="space-y-4">
