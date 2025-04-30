@@ -6,6 +6,9 @@ import { Toaster } from "react-hot-toast";
 import AuthPage from './Auth';
 import StudentDashboard from "./components/StudentDashboard";
 import MilestonePage from "./components/MileStone";
+import AdminDashboard from "./components/AdminDashboard";
+import NotesPage from "./components/NotesPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 {/*
 function App() {
@@ -32,7 +35,7 @@ function App() {
 export default App;
 */}
 
- function App() {
+function App() {
   console.log('render app..');
 
   return (
@@ -41,17 +44,39 @@ export default App;
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Student Routes */}
         <Route path="/student-dashboard" element={
-          <StudentDashboard />
-        } /> 
-        <Route path="/student-dashboard/:projectId" element={
+          <ProtectedRoute allowedRoles={['student']}>
             <StudentDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/student-dashboard/:projectId" element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentDashboard />
+          </ProtectedRoute>
         } />
         <Route path="/:projectId" element={
+          <ProtectedRoute allowedRoles={['student']}>
             <StudentDashboard />
+          </ProtectedRoute>
         } />
         <Route path="/milestones" element={
+          <ProtectedRoute allowedRoles={['student']}>
             <MilestonePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/notes" element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <NotesPage />
+          </ProtectedRoute>
         } />
       </Routes>
     </>

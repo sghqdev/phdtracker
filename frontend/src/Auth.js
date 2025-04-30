@@ -69,8 +69,14 @@ export default function AuthPage() {
 
       toast.success(isLogin ? "Logged in successfully" : "Account created successfully");
       
-      // Redirect to the student dashboard
-      navigate("/student-dashboard");
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate("/admin");
+      } else if (user.role === 'advisor') {
+        navigate("/advisor-dashboard");
+      } else {
+        navigate("/student-dashboard");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
     }
