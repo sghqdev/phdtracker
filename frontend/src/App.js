@@ -5,6 +5,7 @@ import AuthPage from './Auth';
 import StudentDashboard from "./components/StudentDashboard";
 import MilestonePage from "./components/MileStone";
 import AdminDashboard from "./components/AdminDashboard";
+import AdminProfile from "./components/AdminProfile";
 import NotesPage from "./components/NotesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./components/Profile";
@@ -45,6 +46,16 @@ function App() {
         
         {/* Admin Routes */}
         <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/profile" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminProfile />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/reports" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
           </ProtectedRoute>

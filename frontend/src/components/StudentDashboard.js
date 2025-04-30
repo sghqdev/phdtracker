@@ -91,9 +91,11 @@ function StudentDashboard() {
   const [isAddMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
+  const [unreadNotesCount, setUnreadNotesCount] = useState(0);
 
   useEffect(() => {
     fetchMilestones();
+    fetchStudentData();
   }, [isAddMilestoneModalOpen, isRenderChange]);
 
   const fetchMilestones = async () => {
@@ -115,6 +117,27 @@ function StudentDashboard() {
       } catch (error) {
         toast.error("Failed to load milestones");
       }
+    }
+  };
+
+  const fetchStudentData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const student = JSON.parse(localStorage.getItem('student'));
+      
+      if (student && student.id) {
+        const response = await axios.get(
+          `http://localhost:9000/api/students/${student.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        setUnreadNotesCount(response.data.unreadNotesCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
     }
   };
 
@@ -158,8 +181,14 @@ function StudentDashboard() {
         <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
         <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
         <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
-        
-        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
+        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer relative" onClick={() => navigate("/notes")}>
+          Notes
+          {unreadNotesCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {unreadNotesCount}
+            </span>
+          )}
+        </li>
       </ul>
     </div>
   </div>

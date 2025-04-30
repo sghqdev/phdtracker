@@ -30,6 +30,10 @@ const studentSchema = new mongoose.Schema({
     },
     email: {
         type: String
+    },
+    unreadNotesCount: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

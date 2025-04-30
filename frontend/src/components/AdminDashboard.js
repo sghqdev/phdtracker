@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -14,6 +14,7 @@ const PROGRESS_BY_STATUS = {
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,7 +24,7 @@ function AdminDashboard() {
   const [noteToEdit, setNoteToEdit] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [studentMilestones, setStudentMilestones] = useState([]);
-  const [activeView, setActiveView] = useState('students'); // 'students' or 'reports'
+  const [activeView, setActiveView] = useState(location.pathname === '/admin/reports' ? 'reports' : 'students');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -93,10 +94,13 @@ function AdminDashboard() {
   };
 
   const handleSignOut = () => {
+    // Clear all auth-related data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.clear();
-    window.location.href = '/auth';
+    
+    // Clear browser history and redirect to landing page
+    window.location.replace('/');
   };
 
   const exportToExcel = (type = 'students') => {
@@ -349,7 +353,7 @@ function AdminDashboard() {
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+      <aside className="w-64 bg-white border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
         <div>
           <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker Admin</div>
           <div className="space-y-4">
@@ -357,15 +361,27 @@ function AdminDashboard() {
             <ul className="space-y-2 mt-2">
               <li 
                 className={`px-4 py-2 rounded-md cursor-pointer ${activeView === 'students' ? 'text-indigo-700 bg-indigo-100' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveView('students')}
+                onClick={() => {
+                  setActiveView('students');
+                  navigate('/admin');
+                }}
               >
                 Students
               </li>
               <li 
                 className={`px-4 py-2 rounded-md cursor-pointer ${activeView === 'reports' ? 'text-indigo-700 bg-indigo-100' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveView('reports')}
+                onClick={() => {
+                  setActiveView('reports');
+                  navigate('/admin/reports');
+                }}
               >
                 Reports
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/admin/profile")}
+              >
+                Profile
               </li>
             </ul>
           </div>
@@ -481,7 +497,14 @@ function AdminDashboard() {
                           {student.milestones?.filter(m => m.status === 'Completed').length || 0} / {student.milestones?.length || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {student.notes?.length || 0} notes
+                          <div className="flex items-center gap-2">
+                            <span>{student.notes?.length || 0} total</span>
+                            {student.unreadNotesCount > 0 && (
+                              <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                                {student.unreadNotesCount} unread
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button

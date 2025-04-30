@@ -2,25 +2,27 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaBuilding, FaGraduationCap, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaBuilding, FaShieldAlt, FaEdit, FaCheck, FaTimes, FaUsers, FaChartBar, FaGraduationCap } from 'react-icons/fa';
 
-function Profile() {
+function AdminProfile() {
   const navigate = useNavigate();
   const [user, setUser] = useState({});
-  const [student, setStudent] = useState({});
   const [isEditing, setIsEditing] = useState(false);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalPrograms: 0,
+    totalDepartments: 0
+  });
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
     email: '',
-    department: '',
-    program: ''
+    department: ''
   });
 
   useEffect(() => {
     const fetchUserData = async () => {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -45,55 +47,32 @@ function Profile() {
         // Fetch user data
         const userResponse = await axios.get(`http://localhost:9000/api/user/${storedUser.id}`, config);
         const userData = userResponse.data;
-        console.log('User Data:', userData);
         setUser(userData);
         
         // Update form data with user information
-        setFormData(prevData => ({
-          ...prevData,
+        setFormData({
+          firstname: userData.first_name || '',
+          lastname: userData.last_name || '',
           email: userData.email || '',
-          department: userData.department || '',
-          program: userData.program || ''
-        }));
-        
-        // Fetch student data if student ID exists
-        if (storedStudent.id) {
-          try {
-            console.log('Fetching student data for ID:', storedStudent.id);
-            const studentResponse = await axios.get(`http://localhost:9000/api/students/${storedStudent.id}`, config);
-            const studentData = studentResponse.data;
-            console.log('Student Data:', studentData);
-            
-            if (!studentData) {
-              throw new Error('No student data received');
-            }
-            
-            setStudent(studentData);
-            
-            // Update form data with student information
-            setFormData(prevData => ({
-              ...prevData,
-              firstname: studentData.firstname || '',
-              lastname: studentData.lastname || ''
-            }));
-          } catch (studentError) {
-            console.error('Error fetching student data:', {
-              error: studentError,
-              response: studentError.response?.data,
-              status: studentError.response?.status
-            });
-            toast.error(`Failed to fetch student data: ${studentError.response?.data?.error || studentError.message}`);
-          }
-        } else {
-          console.log('No student ID found in localStorage');
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', {
-          error: error,
-          response: error.response?.data,
-          status: error.response?.status
+          department: userData.department || ''
         });
-        toast.error('Failed to fetch user data. Please try logging in again.');
+
+        // Fetch admin statistics
+        const statsResponse = await axios.get('http://localhost:9000/api/students', config);
+        const students = statsResponse.data;
+        
+        // Calculate statistics
+        const programs = new Set(students.map(student => student.major));
+        const departments = new Set(students.map(student => student.department));
+        
+        setStats({
+          totalStudents: students.length,
+          totalPrograms: programs.size,
+          totalDepartments: departments.size
+        });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to fetch data. Please try logging in again.');
         navigate('/');
       }
     };
@@ -111,7 +90,6 @@ function Profile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
     const token = localStorage.getItem('token');
 
     if (!token) {
@@ -129,16 +107,10 @@ function Profile() {
     try {
       // Update user data
       await axios.put(`http://localhost:9000/api/user/${storedUser.id}`, {
+        first_name: formData.firstname,
+        last_name: formData.lastname,
         email: formData.email,
-        department: formData.department,
-        program: formData.program
-      }, config);
-
-      // Update student data
-      await axios.put(`http://localhost:9000/api/students/${storedStudent.id}`, {
-        firstname: formData.firstname,
-        lastname: formData.lastname,
-        userId: storedUser.id
+        department: formData.department
       }, config);
 
       toast.success('Profile updated successfully!');
@@ -152,7 +124,6 @@ function Profile() {
   const handleSignOut = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('student');
     toast.success("Signed out successfully!");
     navigate("/");
   };
@@ -162,14 +133,14 @@ function Profile() {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
         <div>
-          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker Admin</div>
           <div className="space-y-4">
-            <div className="text-sm text-gray-700 font-medium">Student Profile</div>
+            <div className="text-sm text-gray-700 font-medium">Admin Controls</div>
             <ul className="space-y-2 mt-2">
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student-dashboard")}>Home</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/admin")}>Students</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/admin/reports")}>Reports</li>
               <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Profile</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
+              
             </ul>
           </div>
         </div>
@@ -191,15 +162,15 @@ function Profile() {
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex items-center space-x-6">
               <div className="h-24 w-24 rounded-full bg-indigo-100 flex items-center justify-center">
-                <FaUser className="h-12 w-12 text-indigo-600" />
+                <FaShieldAlt className="h-12 w-12 text-indigo-600" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{formData.firstname} {formData.lastname}</h1>
                 <p className="text-gray-600">{formData.email}</p>
                 <div className="mt-2 flex items-center space-x-4">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                    <FaGraduationCap className="mr-2" />
-                    {formData.program}
+                    <FaShieldAlt className="mr-2" />
+                    Administrator
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                     <FaBuilding className="mr-2" />
@@ -216,6 +187,37 @@ function Profile() {
                   Edit Profile
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Admin Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Total Students</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stats.totalStudents}</p>
+                </div>
+                <FaUsers className="h-8 w-8 text-indigo-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Total Programs</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stats.totalPrograms}</p>
+                </div>
+                <FaGraduationCap className="h-8 w-8 text-indigo-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Total Departments</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stats.totalDepartments}</p>
+                </div>
+                <FaBuilding className="h-8 w-8 text-indigo-600" />
+              </div>
             </div>
           </div>
           
@@ -308,30 +310,6 @@ function Profile() {
                     </div>
                   )}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaGraduationCap className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        name="program"
-                        value={formData.program}
-                        onChange={handleChange}
-                        className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                        placeholder="Enter your program"
-                      />
-                    </div>
-                  ) : (
-                    <div className="px-4 py-2 bg-gray-50 rounded-md text-gray-900 flex items-center">
-                      <FaGraduationCap className="h-5 w-5 text-gray-400 mr-2" />
-                      {formData.program}
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
@@ -361,4 +339,4 @@ function Profile() {
   );
 }
 
-export default Profile; 
+export default AdminProfile; 

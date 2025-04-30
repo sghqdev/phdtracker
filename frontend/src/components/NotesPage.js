@@ -21,6 +21,7 @@ function NotesPage() {
     if (storedStudent.id) {
       setStudent(storedStudent);
       fetchNotes(storedStudent.id);
+      resetUnreadCount(storedStudent.id);
     }
   }, [navigate]);
 
@@ -45,6 +46,23 @@ function NotesPage() {
     }
   };
 
+  const resetUnreadCount = async (studentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `http://localhost:9000/api/students/${studentId}/reset-unread`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error resetting unread count:', error);
+    }
+  };
+
   const handleMarkAsRead = async (noteId) => {
     try {
       const token = localStorage.getItem('token');
@@ -58,7 +76,9 @@ function NotesPage() {
         }
       );
       toast.success('Note marked as read');
-      fetchNotes(student.id);
+      if (student && student.id) {
+        fetchNotes(student.id);
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         navigate('/auth');
