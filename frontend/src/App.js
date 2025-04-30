@@ -1,11 +1,16 @@
 import AppLayout from "./components/AppLayout";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Task from "./components/Task";
 import LandingPage from "./landingpage"; 
 import { Toaster } from "react-hot-toast";
 import AuthPage from './Auth';
 import StudentDashboard from "./components/StudentDashboard";
 import MilestonePage from "./components/MileStone";
+import AdvisorDashboard from "./components/AdvisorDashboard";
+import StudentProgress from "./components/StudentProgress";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from './contexts/AuthContext';
+import AdvisorPendingApprovals from "./components/AdvisorPendingApprovals";
 
 {/*
 function App() {
@@ -32,29 +37,81 @@ function App() {
 export default App;
 */}
 
- function App() {
+function App() {
   console.log('render app..');
 
   return (
-    <>
+    <AuthProvider>
       <Toaster position="top-right" gutter={8} />
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/student-dashboard" element={
-          <StudentDashboard />
-        } /> 
-        <Route path="/student-dashboard/:projectId" element={
-            <StudentDashboard />
-        } />
-        <Route path="/:projectId" element={
-            <StudentDashboard />
-        } />
-        <Route path="/milestones" element={
-            <MilestonePage />
-        } />
+        {/* Public routes */}
+        <Route path="/" element={<AuthPage />} />
+        
+        {/* Student routes */}
+        <Route 
+          path="/student/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/student/project/:projectId" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/student/milestones" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <MilestonePage />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Advisor routes */}
+        <Route 
+          path="/advisor/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['advisor']}>
+              <AdvisorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/advisor/student/:studentId" 
+          element={
+            <ProtectedRoute allowedRoles={['advisor']}>
+              <StudentProgress />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/advisor/pending-approvals" 
+          element={
+            <ProtectedRoute allowedRoles={['advisor']}>
+              <AdvisorPendingApprovals />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Catch-all route - redirect to dashboard based on role */}
+        <Route 
+          path="*" 
+          element={
+            <ProtectedRoute allowedRoles={['student', 'advisor']}>
+              {({ currentUser }) => 
+                currentUser?.role === 'student' ? <Navigate to="/student/dashboard" /> : <Navigate to="/advisor/dashboard" />
+              }
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
-    </>
+    </AuthProvider>
   );
 }
 

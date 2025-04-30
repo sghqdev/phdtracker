@@ -1,38 +1,51 @@
 import mongoose from 'mongoose';
 
-const MilestoneSchema = new mongoose.Schema({
-    studentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Student',
-    required: true,
-  },
+const milestoneSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true,
+    required: true
   },
   description: {
     type: String,
-    required: true,
+    required: true
   },
   status: {
-  type: String,
-  enum: ['Planned', 'InProgress', 'PendingApproval', 'Completed'], 
-  default: 'Planned',
-},
-  dueDate: {
-    type: Date,
-    required: false,
+    type: String,
+    enum: ['Planned', 'InProgress', 'PendingApproval', 'Completed'],
+    default: 'Planned'
+  },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+    ref: 'User'
   },
-  isMajor: { 
-    type: Boolean, 
-    default: false 
+  isMajor: {
+    type: Boolean,
+    default: false
   },
+  feedback: String,
+  verified: {
+    type: Boolean,
+    default: false
+  },
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  verifiedAt: Date,
+  lastReviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  lastReviewedAt: Date,
+  dueDate: {
+    type: Date,
+    required: true
+  }
 }, { timestamps: true });
 
-const Milestone = mongoose.models.Milestone || mongoose.model('Milestone', MilestoneSchema);
-export default Milestone;
+export default mongoose.model('Milestone', milestoneSchema);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from './api/axios';
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from './contexts/AuthContext';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -15,64 +16,117 @@ export default function AuthPage() {
   const [role, setRole] = useState("student");
   const [program, setProgram] = useState("");
   const [department, setDepartment] = useState("");
+  const [advisors, setAdvisors] = useState([]);
+  const [selectedAdvisor, setSelectedAdvisor] = useState('');
+  const { login } = useAuth();
+
+  useEffect(() => {
+    const fetchAdvisors = async () => {
+      try {
+        const response = await api.get('/api/auth/advisors');
+        setAdvisors(response.data);
+      } catch (error) {
+        console.error('Error fetching advisors:', error);
+        toast.error('Failed to load advisors');
+      }
+    };
+    fetchAdvisors();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation for login
-    if (isLogin) {
-      if (!email || !password) {
-        toast.error("Please fill in all fields");
-        return;
-      }
-    } 
-    // Validation for signup
-    else {
-      if (!email || !password || !confirmPassword || !firstName || !lastName || !program || !department) {
-        toast.error("Please fill in all fields");
-        return;
-      }
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
-      }
-    }
-    
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
-      return;
-    }
-
     try {
-      const endpoint = isLogin ? "/login" : "/signup";
-      
-      const userData = isLogin 
-        ? { email, password }
-        : {
-            email,
-            password,
-            first_name: firstName,
-            last_name: lastName,
-            role,
-            program,
-            department
-          };
+      if (isLogin) {
+        if (!email || !password) {
+          toast.error("Please fill in all fields");
+          return;
+        }
 
-      const response = await axios.post(`http://localhost:9000/api/auth${endpoint}`, userData);
+        const response = await api.post('/api/auth/login', { email, password });
+        console.log('Full login response:', {
+          status: response.status,
+          headers: response.headers,
+          data: response.data
+        });
 
-      const { token, user, student } = response.data;
+        // Validate the response data
+        if (!response.data || !response.data.role) {
+          throw new Error('Invalid response from server');
+        }
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+        // Use the login function from context
+        login(response.data);
+        
+        toast.success('Login successful!');
+        
+        // Navigate based on role
+        if (response.data.role === 'student') {
+          navigate('/student/dashboard');
+        } else if (response.data.role === 'advisor') {
+          navigate('/advisor/dashboard');
+        }
+      } else {
+        // Signup
+        if (!email || !password || !confirmPassword || !firstName || !lastName || !program || !department) {
+          toast.error("Please fill in all fields");
+          return;
+        }
 
-      if (student) localStorage.setItem("student", JSON.stringify(student));
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match");
+          return;
+        }
 
-      toast.success(isLogin ? "Logged in successfully" : "Account created successfully");
-      
-      // Redirect to the student dashboard
-      navigate("/student-dashboard");
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters long");
+          return;
+        }
+
+        // Add validation for advisor selection
+        if (role === 'student' && !selectedAdvisor) {
+          toast.error("Please select an advisor");
+          return;
+        }
+
+        console.log('Registration payload:', {
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+          role,
+          program,
+          department,
+          advisor: role === 'student' ? selectedAdvisor : undefined
+        });
+
+        const response = await api.post('/api/auth/register', {
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+          role,
+          program,
+          department,
+          advisor: role === 'student' ? selectedAdvisor : undefined
+        });
+
+        if (response.status === 201) {
+          toast.success('Registration successful! Please log in.');
+          setIsLogin(true);
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setFirstName("");
+          setLastName("");
+          setProgram("");
+          setDepartment("");
+        }
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+      console.error('Auth error:', error);
+      const errorMessage = error.response?.data?.message || 'Authentication failed';
+      toast.error(errorMessage);
     }
   };
 
@@ -144,6 +198,22 @@ export default function AuthPage() {
                 placeholder="Department"
                 className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+
+              {!isLogin && role === 'student' && (
+                <select
+                  value={selectedAdvisor}
+                  onChange={(e) => setSelectedAdvisor(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select an Advisor</option>
+                  {advisors.map((advisor) => (
+                    <option key={advisor._id} value={advisor._id}>
+                      {advisor.first_name} {advisor.last_name} - {advisor.department}
+                    </option>
+                  ))}
+                </select>
+              )}
             </>
           )}
           

@@ -1,12 +1,14 @@
 // Updated StudentDashboard.js with Progress Bars on Cards
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import { FaPen, FaTrash } from "react-icons/fa";
+import api from '../api/axios';  // Add this import
+import { useAuth } from '../contexts/AuthContext';
 
 const FIXED_COLUMNS = {
   Planned: "Planned",
@@ -83,38 +85,42 @@ const onDragEnd = async (result, columns, setColumns) => {
   }
 };
 
-
-
 function StudentDashboard() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [columns, setColumns] = useState({});
   const [isAddMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
 
+  // Single useEffect for fetching milestones
   useEffect(() => {
+    if (!currentUser?.studentData?._id) return;
+
     fetchMilestones();
-  }, [isAddMilestoneModalOpen, isRenderChange]);
+  }, [currentUser, isAddMilestoneModalOpen, isRenderChange]);
 
   const fetchMilestones = async () => {
-    const storedStudent = JSON.parse(localStorage.getItem("student") || "{}");
-    if (storedStudent.id) {
-      try {
-        const response = await axios.get(`http://localhost:9000/api/milestones/student/${storedStudent.id}`);
-        const milestoneData = response.data;
+    if (!currentUser?.studentData?._id) return;
 
-        const newColumns = {};
-        Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
-          newColumns[key] = {
-            name,
-            items: milestoneData.filter(m => m.status === key),
-          };
-        });
+    try {
+      console.log('Attempting to fetch milestones for ID:', currentUser.studentData._id);
+      const response = await api.get(`/api/milestones/student/${currentUser.studentData._id}`);
+      
+      const milestoneData = response.data;
+      const newColumns = {};
+      Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
+        const filteredMilestones = milestoneData.filter(m => m.status === key);
+        newColumns[key] = {
+          name,
+          items: filteredMilestones,
+        };
+      });
 
-        setColumns(newColumns);
-      } catch (error) {
-        toast.error("Failed to load milestones");
-      }
+      setColumns(newColumns);
+    } catch (error) {
+      console.error('Milestone fetch error:', error);
+      toast.error("Failed to load milestones");
     }
   };
 
@@ -125,19 +131,20 @@ function StudentDashboard() {
 
   const handleDelete = async (milestoneId) => {
     try {
-      await axios.delete(`http://localhost:9000/api/milestones/${milestoneId}`);
+      await api.delete(`/milestones/${milestoneId}`);
       toast.success("Milestone deleted");
       setRenderChange(prev => !prev);
     } catch (error) {
+      console.error('Delete error:', error);
       toast.error("Failed to delete milestone");
     }
   };
   const handleSignOut = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('student'); // if you stored student separately
+    localStorage.removeItem('student');
     toast.success("Signed out successfully!");
-    navigate("/"); 
+    navigate("/", { replace: true });
   };
   
 
@@ -176,7 +183,7 @@ function StudentDashboard() {
           <div className="flex items-center gap-4">
             <button className="text-indigo-600">🔔</button>
             <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
-            <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
+            <div className="h-8 w-8 rounded-full bg-gray-200"></div>
           </div>
         </header>
 
@@ -244,8 +251,8 @@ function StudentDashboard() {
             setAddMilestoneModalOpen(false);
             setMilestoneToEdit(null);
           }}
-          studentId={JSON.parse(localStorage.getItem('student') || '{}')?.id}
-          userId={JSON.parse(localStorage.getItem('user') || '{}')?.id}
+          studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
+          userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
           refreshMilestones={() => setRenderChange(prev => !prev)}
           milestoneToEdit={milestoneToEdit}
         />

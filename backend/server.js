@@ -1,40 +1,35 @@
-import express from "express";
-import api from './routes/index.js';
-import authRoutes from './routes/authentication.js';
 import dotenv from 'dotenv';
 import mongoose from "mongoose";
-import cors from "cors";
-import './config/passport.js';
-import milestoneRoutes from './routes/milestoneRoutes.js';
-import studentRoutes from './routes/studentRoutes.js';
-
+import app from './app.js';
+import authRoutes from './routes/auth.js';
+import advisorRoutes from './routes/advisorRoutes.js';
 
 dotenv.config();
 
-mongoose.connect(process.env.MONGODB_PATH, () => {
-    console.log('MongoDB connected');
-}, (e) => console.log(e));
+mongoose.connect(process.env.MONGODB_PATH)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
-const PORT = process.env.SERVER_PORT || 9000;
-const origin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const startServer = async (retries = 0) => {
+  const PORT = 9001;
+  
+  try {
+    // Set up routes BEFORE starting the server
+    app.use('/api/auth', authRoutes);
+    app.use('/api/advisor', advisorRoutes);
 
-const app = express();
+    // Start the server AFTER routes are set up
+    const server = app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`CORS enabled for origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+    });
 
-app.use(cors({ origin }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+    server.on('error', (error) => {
+      console.error('Server error:', error);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+  }
+};
 
-// Mount auth routes
-app.use('/api/auth', authRoutes);
-
-// Mount other API routes
-app.use(api);
-
-// Mount milestone routes
-app.use('/api/milestones', milestoneRoutes);
-
-app.use('/api/students', studentRoutes);
-
-app.listen(PORT, () => {
-    console.log(`Your app is running at http://localhost:${PORT}`);
-});
+startServer();
