@@ -207,7 +207,8 @@ function StudentDashboard() {
                                     {item.dueDate ? (
                                       <>
                                         {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br />
-                                        {new Date(item.dueDate).toLocaleDateString()}
+                                        {new Date(new Date(item.dueDate).toISOString().split('T')[0]).toLocaleDateString()}
+
                                       </>
                                     ) : "No Due Date"}
                                   </div>

@@ -1,14 +1,11 @@
-import AppLayout from "./components/AppLayout";
 import { Routes, Route } from "react-router-dom";
-import Task from "./components/Task";
 import LandingPage from "./landingpage"; 
 import { Toaster } from "react-hot-toast";
 import AuthPage from './Auth';
 import StudentDashboard from "./components/StudentDashboard";
 import MilestonePage from "./components/MileStone";
 
-{/*
-function App() {
+{/*function App() {
   console.log('render app..')
   return (
     <AppLayout>
