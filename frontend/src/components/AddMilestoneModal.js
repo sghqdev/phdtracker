@@ -50,12 +50,20 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     }
 
     try {
+      // Set time to 11:59 PM UTC for the selected date
+      let dueDateUTC = null;
+      if (formData.dueDate) {
+        const [year, month, day] = formData.dueDate.split('-');
+        const date = new Date(Date.UTC(year, month - 1, day, 23, 59, 0));
+        dueDateUTC = date.toISOString();
+      }
+
       if (milestoneToEdit) {
         // UPDATE existing milestone
         await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, {
           title: formData.title,
           description: formData.description,
-          dueDate: formData.dueDate,
+          dueDate: dueDateUTC,
           status: formData.status,
           isMajor: formData.isMajor
         });
@@ -67,7 +75,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
           userId,
           title: formData.title,
           description: formData.description,
-          dueDate: formData.dueDate,
+          dueDate: dueDateUTC,
           status: formData.status,
           isMajor: formData.isMajor
         });

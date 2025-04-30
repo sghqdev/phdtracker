@@ -206,9 +206,8 @@ function StudentDashboard() {
                                   <div className="text-xs text-gray-500">
                                     {item.dueDate ? (
                                       <>
-                                        {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br />
-                                        {new Date(new Date(item.dueDate).toISOString().split('T')[0]).toLocaleDateString()}
-
+                                        {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC<br />
+                                        {new Date(item.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                                       </>
                                     ) : "No Due Date"}
                                   </div>
