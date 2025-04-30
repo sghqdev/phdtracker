@@ -9,6 +9,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     dueDate: '',
     status: 'Planned',
     isMajor: false,
+    reminderDate: '',
   });
 
   useEffect(() => {
@@ -19,6 +20,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         dueDate: milestoneToEdit.dueDate ? milestoneToEdit.dueDate.split('T')[0] : '',
         status: milestoneToEdit.status,
         isMajor: milestoneToEdit.isMajor || false,
+        reminderDate: milestoneToEdit.reminderDate ? milestoneToEdit.reminderDate.split('T')[0] : '',
       });
     } else {
       setFormData({
@@ -27,6 +29,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         dueDate: '',
         status: 'Planned',
         isMajor: false,
+        reminderDate: '',
       });
     }
   }, [milestoneToEdit]);
@@ -65,7 +68,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
           description: formData.description,
           dueDate: dueDateUTC,
           status: formData.status,
-          isMajor: formData.isMajor
+          isMajor: formData.isMajor,
+          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : null,
         });
         toast.success('Milestone updated successfully!');
       } else {
@@ -77,7 +81,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
           description: formData.description,
           dueDate: dueDateUTC,
           status: formData.status,
-          isMajor: formData.isMajor
+          isMajor: formData.isMajor,
+          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : null,
         });
         toast.success('Milestone created successfully!');
       }
@@ -124,6 +129,16 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               type="date"
               name="dueDate"
               value={formData.dueDate}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Reminder Date</label>
+            <input
+              type="date"
+              name="reminderDate"
+              value={formData.reminderDate}
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
             />

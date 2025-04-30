@@ -7,6 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import { FaPen, FaTrash } from "react-icons/fa";
+import NotificationBell from './NotificationBell';
 
 const FIXED_COLUMNS = {
   Planned: "Planned",
@@ -165,7 +166,7 @@ function StudentDashboard() {
     sessionStorage.clear();
     
     // Force a hard redirect to the login page
-    window.location.href = '/auth';
+    window.location.href = '/';
   };
   
 
@@ -210,7 +211,7 @@ function StudentDashboard() {
         <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
           <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
           <div className="flex items-center gap-4">
-            <button className="text-indigo-600">🔔</button>
+            <NotificationBell />
             <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
             <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
           </div>

@@ -9,6 +9,8 @@ import milestoneRoutes from './routes/milestoneRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import { startReminderScheduler } from './utils/reminderScheduler.js';
 
 
 dotenv.config();
@@ -45,6 +47,12 @@ app.use('/api/user', userRoutes);
 
 // Mount notes routes
 app.use('/api/notes', noteRoutes);
+
+// Mount notification routes
+app.use('/api/notifications', notificationRoutes);
+
+// Start the reminder scheduler
+startReminderScheduler();
 
 app.listen(PORT, () => {
     console.log(`Your app is running at http://localhost:${PORT}`);
