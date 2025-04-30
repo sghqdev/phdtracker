@@ -20,9 +20,19 @@ function Profile() {
     const fetchUserData = async () => {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
+      const token = localStorage.getItem('token');
 
-      console.log('Stored User:', storedUser);
-      console.log('Stored Student:', storedStudent);
+      if (!token) {
+        toast.error('Authentication token not found. Please log in again.');
+        navigate('/');
+        return;
+      }
+
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
 
       if (!storedUser.id) {
         toast.error('User not found. Please log in again.');
@@ -32,7 +42,7 @@ function Profile() {
 
       try {
         // Fetch user data
-        const userResponse = await axios.get(`http://localhost:9000/api/user/${storedUser.id}`);
+        const userResponse = await axios.get(`http://localhost:9000/api/user/${storedUser.id}`, config);
         const userData = userResponse.data;
         console.log('User Data:', userData);
         setUser(userData);
@@ -49,7 +59,7 @@ function Profile() {
         if (storedStudent.id) {
           try {
             console.log('Fetching student data for ID:', storedStudent.id);
-            const studentResponse = await axios.get(`http://localhost:9000/api/students/${storedStudent.id}`);
+            const studentResponse = await axios.get(`http://localhost:9000/api/students/${storedStudent.id}`, config);
             const studentData = studentResponse.data;
             console.log('Student Data:', studentData);
             
@@ -101,6 +111,19 @@ function Profile() {
     e.preventDefault();
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      toast.error('Authentication token not found. Please log in again.');
+      navigate('/');
+      return;
+    }
+
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
 
     try {
       // Update user data
@@ -108,14 +131,14 @@ function Profile() {
         email: formData.email,
         department: formData.department,
         program: formData.program
-      });
+      }, config);
 
-      // Update student data - include userId to maintain the required field
+      // Update student data
       await axios.put(`http://localhost:9000/api/students/${storedStudent.id}`, {
         firstname: formData.firstname,
         lastname: formData.lastname,
-        userId: storedUser.id // Maintain the required userId field
-      });
+        userId: storedUser.id
+      }, config);
 
       toast.success('Profile updated successfully!');
       setIsEditing(false);
@@ -145,6 +168,7 @@ function Profile() {
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student-dashboard")}>Home</li>
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
               <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Profile</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
             </ul>
           </div>
         </div>

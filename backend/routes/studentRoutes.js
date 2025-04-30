@@ -1,9 +1,6 @@
 import express from 'express';
 import Student from '../models/Student.js';
 import { verifyToken } from '../middleware/verifyToken.js';
-import User from '../models/user.js';
-import Milestone from '../models/milestone.js';
-import Note from '../models/note.js';
 
 const router = express.Router();
 
@@ -18,74 +15,25 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get ALL Students with related data
+// Get ALL Students
 router.get('/', verifyToken, async (req, res) => {
   try {
-    // Get all students with their user data
-    const students = await Student.find().populate({
-      path: 'userId',
-      select: 'email program department'
-    });
-
-    // Get milestones and notes for each student
-    const enrichedStudents = await Promise.all(students.map(async (student) => {
-      const milestones = await Milestone.find({ studentId: student._id });
-      const notes = await Note.find({ studentId: student._id });
-      
-      // Handle case where userId might be null
-      const userData = student.userId || {};
-      
-      return {
-        _id: student._id,
-        firstname: student.firstname,
-        lastname: student.lastname,
-        email: userData.email || student.email || 'No email available',
-        major: student.major || userData.program || 'No major specified',
-        department: userData.department || 'No department specified',
-        programStatus: student.programStatus || 'Active',
-        milestones: milestones || [],
-        notes: notes || []
-      };
-    }));
-
-    res.json(enrichedStudents);
+    const students = await Student.find().populate('userId');
+    res.json(students);
   } catch (err) {
     console.error('Error fetching students:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get Single Student by ID with related data
+// Get Single Student by ID
 router.get('/:id', verifyToken, async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id).populate({
-      path: 'userId',
-      select: 'email program department'
-    });
-
+    const student = await Student.findById(req.params.id).populate('userId');
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
-
-    const milestones = await Milestone.find({ studentId: student._id });
-    const notes = await Note.find({ studentId: student._id });
-
-    // Handle case where userId might be null
-    const userData = student.userId || {};
-
-    const enrichedStudent = {
-      _id: student._id,
-      firstname: student.firstname,
-      lastname: student.lastname,
-      email: userData.email || student.email || 'No email available',
-      major: student.major || userData.program || 'No major specified',
-      department: userData.department || 'No department specified',
-      programStatus: student.programStatus || 'Active',
-      milestones: milestones || [],
-      notes: notes || []
-    };
-
-    res.json(enrichedStudent);
+    res.json(student);
   } catch (err) {
     console.error('Error fetching student:', err);
     res.status(500).json({ error: err.message });
