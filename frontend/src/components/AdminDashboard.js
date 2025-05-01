@@ -19,6 +19,7 @@ function AdminDashboard() {
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isViewNotesModalOpen, setIsViewNotesModalOpen] = useState(false);
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [noteToEdit, setNoteToEdit] = useState(null);
@@ -37,11 +38,11 @@ function AdminDashboard() {
     } else {
       const query = searchQuery.toLowerCase();
       const filtered = students.filter(student => 
-        student.firstname.toLowerCase().includes(query) ||
-        student.lastname.toLowerCase().includes(query) ||
-        student.email.toLowerCase().includes(query) ||
-        student.major.toLowerCase().includes(query) ||
-        student.programStatus.toLowerCase().includes(query)
+        (student.firstname?.toLowerCase() || '').includes(query) ||
+        (student.lastname?.toLowerCase() || '').includes(query) ||
+        (student.email?.toLowerCase() || '').includes(query) ||
+        (student.major?.toLowerCase() || '').includes(query) ||
+        (student.programStatus?.toLowerCase() || '').includes(query)
       );
       setFilteredStudents(filtered);
     }
@@ -91,6 +92,11 @@ function AdminDashboard() {
     setSelectedStudent(student);
     await fetchStudentMilestones(student._id);
     setIsMilestoneModalOpen(true);
+  };
+
+  const handleViewNotes = (student) => {
+    setSelectedStudent(student);
+    setIsViewNotesModalOpen(true);
   };
 
   const handleSignOut = () => {
@@ -465,8 +471,7 @@ function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Program</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Milestones</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Notes</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">New Note</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">View/Edit/Add/Delete Notes</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -481,7 +486,7 @@ function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{student.email}</div>
+                          <div className="text-sm text-gray-500">{student.userId?.email || student.email}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">{student.major}</div>
@@ -497,7 +502,10 @@ function AdminDashboard() {
                           {student.milestones?.filter(m => m.status === 'Completed').length || 0} / {student.milestones?.length || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
+                          <div 
+                            className="flex items-center gap-2 cursor-pointer hover:text-indigo-600"
+                            onClick={() => handleViewNotes(student)}
+                          >
                             <span>{student.notes?.length || 0} total</span>
                             {student.unreadNotesCount > 0 && (
                               <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
@@ -505,17 +513,6 @@ function AdminDashboard() {
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => {
-                              setSelectedStudent(student);
-                              setIsNoteModalOpen(true);
-                            }}
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
-                          >
-                            <FaPlus />
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -622,6 +619,79 @@ function AdminDashboard() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Notes Modal */}
+      {isViewNotesModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+          <div className="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium leading-6 text-gray-900">
+                  Notes for {selectedStudent.firstname} {selectedStudent.lastname}
+                </h3>
+                <button
+                  onClick={() => setIsViewNotesModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-4">
+                {selectedStudent.notes?.length === 0 ? (
+                  <div className="text-center text-gray-500 py-4">
+                    No notes found
+                  </div>
+                ) : (
+                  selectedStudent.notes?.map((note) => (
+                    <div key={note._id} className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-gray-800">{note.content}</p>
+                          <p className="text-sm text-gray-500 mt-2">
+                            {new Date(note.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <button
+                            onClick={() => {
+                              handleEditNote(note);
+                              setIsViewNotesModalOpen(false);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteNote(note._id);
+                              setIsViewNotesModalOpen(false);
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setIsViewNotesModalOpen(false);
+                    setSelectedStudent(selectedStudent);
+                    setIsNoteModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2"
+                >
+                  <FaPlus /> Add New Note
+                </button>
               </div>
             </div>
           </div>

@@ -20,7 +20,10 @@ router.post('/', async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const students = await Student.find()
-      .populate('userId')
+      .populate({
+        path: 'userId',
+        select: 'email'
+      })
       .lean();
     
     // Get notes count for each student
@@ -30,6 +33,7 @@ router.get('/', verifyToken, async (req, res) => {
       return {
         ...student,
         id: student._id,
+        email: student.userId?.email || student.email || '',  // Try both userId.email and student.email
         notes,
         unreadNotesCount: unreadNotes
       };
