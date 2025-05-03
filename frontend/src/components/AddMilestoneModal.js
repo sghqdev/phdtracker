@@ -11,6 +11,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
     isMajor: false,
     reminderDate: '',
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (milestoneToEdit) {
@@ -32,19 +33,47 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         reminderDate: '',
       });
     }
+    setErrors({});
   }, [milestoneToEdit]);
 
-  if (!isOpen) return null;
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (formData.reminderDate && formData.dueDate) {
+      const reminderDate = new Date(formData.reminderDate);
+      const dueDate = new Date(formData.dueDate);
+      
+      if (reminderDate > dueDate) {
+        newErrors.reminderDate = "Reminder date cannot be later than the due date";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
 
     if (!studentId || !userId) {
       toast.error('Missing required IDs.');
@@ -61,29 +90,20 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
         dueDateUTC = date.toISOString();
       }
 
+      const milestoneData = {
+        ...formData,
+        studentId,
+        userId,
+        dueDate: dueDateUTC,
+      };
+
       if (milestoneToEdit) {
         // UPDATE existing milestone
-        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, {
-          title: formData.title,
-          description: formData.description,
-          dueDate: dueDateUTC,
-          status: formData.status,
-          isMajor: formData.isMajor,
-          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : null,
-        });
+        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, milestoneData);
         toast.success('Milestone updated successfully!');
       } else {
         // CREATE new milestone
-        await axios.post('http://localhost:9000/api/milestones', {
-          studentId,
-          userId,
-          title: formData.title,
-          description: formData.description,
-          dueDate: dueDateUTC,
-          status: formData.status,
-          isMajor: formData.isMajor,
-          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : null,
-        });
+        await axios.post('http://localhost:9000/api/milestones', milestoneData);
         toast.success('Milestone created successfully!');
       }
 
@@ -94,6 +114,8 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
       toast.error('Failed to save milestone.');
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -140,8 +162,12 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               name="reminderDate"
               value={formData.reminderDate}
               onChange={handleChange}
-              className="w-full p-2 border rounded-md"
+              className={`w-full p-2 border rounded-md ${errors.reminderDate ? 'border-red-500' : ''}`}
+              max={formData.dueDate}
             />
+            {errors.reminderDate && (
+              <p className="text-red-500 text-sm mt-1">{errors.reminderDate}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Status</label>

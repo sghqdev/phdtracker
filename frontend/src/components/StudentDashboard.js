@@ -93,6 +93,7 @@ function StudentDashboard() {
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchMilestones();
@@ -156,19 +157,44 @@ function StudentDashboard() {
       toast.error("Failed to delete milestone");
     }
   };
+  
   const handleSignOut = () => {
     // Clear all auth-related data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('student');
-    
-    // Clear any other session data you might have
     sessionStorage.clear();
     
-    // Force a hard redirect to the login page
-    window.location.href = '/';
+    // Clear browser history and redirect to landing page
+    window.location.replace('/');
   };
   
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    const storedStudent = JSON.parse(localStorage.getItem("student") || "{}");
+    if (storedStudent.id) {
+      axios.get(`http://localhost:9000/api/milestones/student/${storedStudent.id}`)
+        .then((response) => {
+          const milestoneData = response.data;
+          const filteredMilestones = milestoneData.filter(milestone => 
+            milestone.title.toLowerCase().includes(query.toLowerCase()) ||
+            milestone.description.toLowerCase().includes(query.toLowerCase())
+          );
+
+          const newColumns = {};
+          Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
+            newColumns[key] = {
+              name,
+              items: filteredMilestones.filter(m => m.status === key),
+            };
+          });
+
+          setColumns(newColumns);
+        })
+        .catch((error) => {
+          toast.error("Failed to search milestones");
+        });
+    }
+  };
 
   return (
     <div className="flex h-screen bg-white">
@@ -209,11 +235,15 @@ function StudentDashboard() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
-          <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
+          <input 
+            className="bg-gray-100 rounded px-3 py-2 w-1/3" 
+            placeholder="Search milestones..." 
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
           <div className="flex items-center gap-4">
             <NotificationBell />
             <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
-            <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
           </div>
         </header>
 
