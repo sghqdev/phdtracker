@@ -56,8 +56,35 @@ function AdminDashboard() {
           'Authorization': `Bearer ${token}`
         }
       });
-      setStudents(response.data);
-      setFilteredStudents(response.data);
+      
+      // Fetch milestones for each student
+      const studentsWithMilestones = await Promise.all(
+        response.data.map(async (student) => {
+          try {
+            const milestonesResponse = await axios.get(
+              `http://localhost:9000/api/milestones/student/${student._id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            );
+            return {
+              ...student,
+              milestones: milestonesResponse.data
+            };
+          } catch (error) {
+            console.error(`Error fetching milestones for student ${student._id}:`, error);
+            return {
+              ...student,
+              milestones: []
+            };
+          }
+        })
+      );
+
+      setStudents(studentsWithMilestones);
+      setFilteredStudents(studentsWithMilestones);
     } catch (error) {
       console.error('Error fetching students:', error);
       if (error.response?.status === 401) {
@@ -470,7 +497,7 @@ function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Program</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Milestones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Milestones Completed</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">View/Edit/Add/Delete Notes</th>
                     </tr>
                   </thead>
