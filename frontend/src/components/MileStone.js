@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useAuth } from "../contexts/AuthContext";
+import api from "../api/axios";
+import { toast } from "react-hot-toast";
+import AddMilestoneModal from "./AddMilestoneModal";
+import MilestoneDetailsModal from "./MilestoneDetailsModal";
 
 const PROGRESS_BY_STATUS = {
   Planned: { percent: 10, color: "#a78bfa" },
@@ -13,35 +17,67 @@ const PROGRESS_BY_STATUS = {
 
 function MilestonePage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState({});
+  const { currentUser } = useAuth();
   const [milestones, setMilestones] = useState([]);
-  const [isRenderChange] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  
+  console.log('MilestonePage mounted with:', {
+    pathname: window.location.pathname,
+    currentUser,
+    hasId: !!currentUser?._id,
+    role: currentUser?.role
+  });
+
+  const fetchMilestones = async () => {
+    try {
+      if (!currentUser?._id) {
+        console.log('No current user ID available');
+        return;
+      }
+
+      const url = `/api/milestones/student/${currentUser._id}`;
+      console.log('Fetching milestones from:', url);
+
+      const response = await api.get(url);
+      console.log('Milestone response:', response.data);
+
+      if (!response.data) {
+        console.log('No data in response');
+        return;
+      }
+
+      const milestonesData = Array.isArray(response.data) ? response.data : [];
+      setMilestones(milestonesData);
+    } catch (err) {
+      console.error('Milestone fetch error:', err);
+      toast.error('Failed to load milestones');
+    }
+  };
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    if (storedUser.id) {
-      axios
-        .get(`http://localhost:9000/user/${storedUser.id}`)
-        .then((res) => setUser(res.data))
-        .catch((err) => console.error("Failed to fetch user", err));
+    if (currentUser?._id) {
+      fetchMilestones();
     }
-  }, []);
-
-  useEffect(() => {
-    const storedStudent = JSON.parse(localStorage.getItem("student") || "{}");
-    if (storedStudent.id) {
-      axios
-        .get(`http://localhost:9000/api/milestones/student/${storedStudent.id}`)
-        .then((res) => setMilestones(res.data))
-        .catch((err) => console.error("Failed to fetch milestones", err));
-    }
-  }, [isRenderChange]);
+  }, [currentUser, isModalOpen]);
 
   const handleSignOut = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("student");
     window.location.href = "/";
+  };
+
+  const handleMilestoneClick = (milestone) => {
+    setSelectedMilestone(milestone);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditMilestone = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedMilestone(null);
+    setIsModalOpen(true);
   };
 
   return (
@@ -53,9 +89,21 @@ function MilestonePage() {
           <div className="space-y-4">
             <div className="text-sm text-gray-700 font-medium">Student Profile</div>
             <ul className="space-y-2 mt-2">
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student-dashboard")}>Home</li>
-              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">My Milestones</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" 
+                onClick={() => navigate("/student/dashboard")}
+              >
+                Dashboard
+              </li>
+              <li 
+                className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/student/milestones")}
+              >
+                My Milestones
+              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                Progress
+              </li>
             </ul>
           </div>
         </div>
@@ -63,8 +111,8 @@ function MilestonePage() {
         <div className="space-y-2">
           <div className="flex items-center space-x-3 px-2">
             <div className="text-sm">
-              <p className="font-medium">{user.first_name} {user.last_name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
+              <p className="font-medium">{currentUser.first_name} {currentUser.last_name}</p>
+              <p className="text-xs text-gray-500">{currentUser.email}</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -74,7 +122,7 @@ function MilestonePage() {
             >
               Sign Out
             </div>
-  </div>
+          </div>
         </div>
       </aside>
 
@@ -85,7 +133,12 @@ function MilestonePage() {
           <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
           <div className="flex items-center gap-4">
             <button className="text-indigo-600">🔔</button>
-            <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => navigate("/student-dashboard")}>Add Milestone</button>
+            <button 
+              className="bg-indigo-600 text-white px-4 py-2 rounded text-sm"
+              onClick={() => setIsModalOpen(true)}
+            >
+              Add Milestone
+            </button>
             <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
           </div>
         </header>
@@ -101,7 +154,11 @@ function MilestonePage() {
               </div>
             ) : (
               milestones.map((milestone) => (
-                <div key={milestone._id} className="bg-white p-4 rounded-lg shadow-sm">
+                <div 
+                  key={milestone._id} 
+                  className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
+                  onClick={() => handleMilestoneClick(milestone)}
+                >
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-gray-800">{milestone.title}</h3>
                     {milestone.isMajor && <span title="Major Milestone" className="text-yellow-400">⭐</span>}
@@ -120,6 +177,26 @@ function MilestonePage() {
           </div>
         </main>
       </div>
+
+      <AddMilestoneModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          fetchMilestones();
+        }}
+        refreshMilestones={fetchMilestones}
+        milestoneToEdit={selectedMilestone}
+      />
+
+      <MilestoneDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedMilestone(null);
+        }}
+        milestone={selectedMilestone}
+        onEdit={handleEditMilestone}
+      />
     </div>
   );
 }

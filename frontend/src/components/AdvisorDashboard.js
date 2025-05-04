@@ -6,12 +6,14 @@ import { FaUserGraduate, FaClipboardCheck, FaBell } from 'react-icons/fa';
 
 export default function AdvisorDashboard() {
   const [students, setStudents] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAdvisedStudents();
+    fetchPendingCount();
   }, []);
 
   const fetchAdvisedStudents = async () => {
@@ -22,14 +24,22 @@ export default function AdvisorDashboard() {
       console.log('Students response:', response.data);
       setStudents(response.data);
     } catch (error) {
-      console.error('Error fetching students:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      toast.error(error.response?.data?.message || 'Failed to fetch students');
+      console.error('Error fetching students:', error);
+      toast.error('Failed to fetch students');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingCount = async () => {
+    try {
+      // Use the correct advisor route for pending milestones
+      const response = await api.get('/api/advisor/pending-milestones');
+      console.log('Pending milestones response:', response.data);
+      setPendingCount(response.data.length);
+    } catch (error) {
+      console.error('Error fetching pending count:', error);
+      setPendingCount(0); // Set to 0 on error
     }
   };
 
@@ -64,15 +74,25 @@ export default function AdvisorDashboard() {
           <div className="space-y-4">
             <div className="text-sm text-gray-700 font-medium">Advisor Dashboard</div>
             <ul className="space-y-2 mt-2">
-              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Student Progress</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Pending Reviews</li>
+              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">
+                Home
+              </li>
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
-                <Link 
-                  to="/advisor/pending-approvals"
-                  className="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                <Link
+                  to="/advisor/student-progress"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
                 >
-                  <span className="ml-3">Pending Approvals</span>
+                  Student Progress
+                </Link>
+              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                <Link
+                  to="/advisor/pending-approvals"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  Pending Approvals
                 </Link>
               </li>
             </ul>
@@ -120,7 +140,7 @@ export default function AdvisorDashboard() {
                 <FaClipboardCheck className="text-green-600 text-xl" />
                 <h3 className="ml-2 text-gray-600">Pending Reviews</h3>
               </div>
-              <p className="text-2xl font-semibold mt-2">0</p>
+              <p className="text-2xl font-semibold mt-2">{pendingCount}</p>
             </div>
           </div>
 

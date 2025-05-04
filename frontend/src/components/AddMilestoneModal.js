@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
-function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMilestones, milestoneToEdit = null }) {
+function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit = null }) {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -43,42 +45,46 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!studentId || !userId) {
-      toast.error('Missing required IDs.');
-      console.error('Missing studentId or userId', { studentId, userId });
+    console.log('Current user data:', currentUser);
+
+    if (!currentUser?._id) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.dueDate) {
+      toast.error('Please select a due date');
       return;
     }
 
     try {
+      const milestoneData = {
+        ...formData,
+        studentId: currentUser._id,
+        userId: currentUser._id
+      };
+
+      console.log('Submitting milestone data:', milestoneData);
+
       if (milestoneToEdit) {
-        // UPDATE existing milestone
-        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, {
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate,
-          status: formData.status,
-          isMajor: formData.isMajor
-        });
+        await api.put(`/api/milestones/${milestoneToEdit._id}`, milestoneData);
         toast.success('Milestone updated successfully!');
       } else {
-        // CREATE new milestone
-        await axios.post('http://localhost:9000/api/milestones', {
-          studentId,
-          userId,
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate,
-          status: formData.status,
-          isMajor: formData.isMajor
-        });
+        const response = await api.post('/api/milestones', milestoneData);
+        console.log('Milestone creation response:', response.data);
         toast.success('Milestone created successfully!');
       }
 
-      refreshMilestones();
+      await refreshMilestones();
       onClose();
     } catch (error) {
-      console.error('Error saving milestone:', error.response?.data || error.message);
-      toast.error('Failed to save milestone.');
+      console.error('Error saving milestone:', {
+        error: error.response?.data || error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      toast.error(error.response?.data?.error || 'Failed to save milestone.');
     }
   };
 
@@ -118,6 +124,7 @@ function AddMilestoneModal({ isOpen, onClose, studentId, userId, refreshMileston
               value={formData.dueDate}
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
+              required
             />
           </div>
           <div>

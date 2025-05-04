@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from '../api/axios';
 import toast from "react-hot-toast";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaCheck, FaTimes, FaEye } from 'react-icons/fa';
 
 const FIXED_COLUMNS = {
   Planned: "Planned",
@@ -26,6 +26,8 @@ function StudentProgress() {
   const [loading, setLoading] = useState(true);
   const [milestones, setMilestones] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   console.log('StudentProgress Initial Mount:', {
     studentId,
@@ -125,6 +127,28 @@ function StudentProgress() {
     }
   };
 
+  const handleAction = async (milestoneId, action) => {
+    try {
+      let status;
+      if (action === 'approve') {
+        status = 'Completed';
+      } else if (action === 'requestChanges') {
+        status = 'InProgress';
+      }
+
+      await api.put(`/api/milestones/${milestoneId}`, { status });
+      toast.success(
+        action === 'approve'
+          ? 'Milestone approved and marked as completed!'
+          : 'Requested changes and sent feedback!'
+      );
+      fetchStudentAndMilestones();
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+      toast.error('Failed to update milestone');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-white justify-center items-center">
@@ -145,14 +169,32 @@ function StudentProgress() {
     <div className="flex h-screen bg-white">
       <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6">
         <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-        <button
-          onClick={() => navigate('/advisor-dashboard')}
-          className="flex items-center text-gray-600 hover:text-indigo-600 mb-6"
-        >
-          <FaArrowLeft className="mr-2" /> Back to Dashboard
-        </button>
+        <div className="space-y-4">
+          <div className="text-sm text-gray-700 font-medium">Navigation</div>
+          <ul className="space-y-2 mt-2">
+            <li 
+              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+              onClick={() => navigate("/advisor/dashboard")}
+            >
+              Dashboard
+            </li>
+            <li 
+              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+              onClick={() => navigate("/advisor/pending-approvals")}
+            >
+              Pending Approvals
+            </li>
+            <li 
+              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+              onClick={() => navigate("/advisor/student-progress")}
+            >
+              Student Progress
+            </li>
+          </ul>
+        </div>
+
         {student && (
-          <div className="border-t pt-4">
+          <div className="mt-8 border-t pt-4">
             <h2 className="text-lg font-semibold text-gray-800">
               {student.first_name} {student.last_name}
             </h2>
@@ -183,6 +225,16 @@ function StudentProgress() {
                           {item.title}
                           {item.isMajor && <span className="ml-2 text-yellow-400">⭐</span>}
                         </h3>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMilestone(item);
+                            setIsDetailsModalOpen(true);
+                          }}
+                          className="text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                          <FaEye />
+                        </button>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                       <div className="text-xs text-gray-500 mb-2">
@@ -201,17 +253,25 @@ function StudentProgress() {
 
                       {item.status === 'PendingApproval' && (
                         <div className="mt-4 space-y-2">
-                          <button
-                            onClick={() => verifyMilestone(item._id)}
-                            className="w-full px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
-                          >
-                            Verify Milestone
-                          </button>
                           <textarea
-                            placeholder="Add feedback..."
+                            placeholder="Add feedback (optional)..."
                             className="w-full p-2 border rounded-md text-sm"
                             onBlur={(e) => provideFeedback(item._id, e.target.value)}
                           />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAction(item._id, 'approve')}
+                              className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 flex items-center justify-center gap-2"
+                            >
+                              <FaCheck /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleAction(item._id, 'requestChanges')}
+                              className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 flex items-center justify-center gap-2"
+                            >
+                              <FaTimes /> Request Changes
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -222,6 +282,65 @@ function StudentProgress() {
           </div>
         </main>
       </div>
+
+      {/* Milestone Details Modal */}
+      {isDetailsModalOpen && selectedMilestone && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-2xl font-semibold text-gray-800">
+                  {selectedMilestone.title}
+                  {selectedMilestone.isMajor && <span className="ml-2 text-yellow-400">⭐</span>}
+                </h2>
+                <button
+                  onClick={() => setIsDetailsModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Description</h3>
+                  <p className="mt-1 text-gray-800">{selectedMilestone.description}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
+                  <p className="mt-1 text-gray-800">
+                    {new Date(selectedMilestone.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                  <p className="mt-1 text-gray-800">{selectedMilestone.status}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Feedback</h3>
+                  <p className="mt-1 text-gray-800">
+                    {selectedMilestone.feedback ? (
+                      <>
+                        {selectedMilestone.feedback}
+                        {selectedMilestone.lastReviewedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Provided on {new Date(selectedMilestone.lastReviewedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      "No feedback available yet"
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

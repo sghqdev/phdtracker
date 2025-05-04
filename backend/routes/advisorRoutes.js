@@ -38,7 +38,7 @@ router.get('/pending-milestones', protect, async (req, res) => {
 
     // First, let's check all milestones for these students
     const allMilestones = await Milestone.find({
-      student: { $in: studentIds }
+      studentId: { $in: studentIds }
     });
     console.log('All milestones found:', {
       total: allMilestones.length,
@@ -50,9 +50,9 @@ router.get('/pending-milestones', protect, async (req, res) => {
 
     // Now get pending ones
     const pendingMilestones = await Milestone.find({
-      student: { $in: studentIds },
+      studentId: { $in: studentIds },
       status: 'PendingApproval'
-    }).populate('student', 'first_name last_name');
+    }).populate('studentId', 'first_name last_name');
 
     console.log('Pending milestones details:', {
       count: pendingMilestones.length,
@@ -60,8 +60,8 @@ router.get('/pending-milestones', protect, async (req, res) => {
         id: m._id,
         title: m.title,
         status: m.status,
-        studentId: m.student?._id,
-        studentName: m.student ? `${m.student.first_name} ${m.student.last_name}` : 'Unknown'
+        studentId: m.studentId,
+        studentName: m.studentId ? `${m.studentId.first_name} ${m.studentId.last_name}` : 'Unknown'
       }))
     });
 
@@ -72,9 +72,9 @@ router.get('/pending-milestones', protect, async (req, res) => {
       description: milestone.description,
       dueDate: milestone.dueDate,
       isMajor: milestone.isMajor,
-      studentId: milestone.student?._id,
-      studentName: milestone.student ? 
-        `${milestone.student.first_name} ${milestone.student.last_name}` : 
+      studentId: milestone.studentId,
+      studentName: milestone.studentId ? 
+        `${milestone.studentId.first_name} ${milestone.studentId.last_name}` : 
         'Unknown Student'
     }));
 
@@ -159,6 +159,30 @@ router.get('/student/:studentId', protect, async (req, res) => {
   } catch (error) {
     console.error('Error fetching student:', error);
     res.status(500).json({ message: 'Failed to load student details' });
+  }
+});
+
+// Add this after your other advisor routes
+router.post('/milestone/:milestoneId/feedback', protect, async (req, res) => {
+  try {
+    const { milestoneId } = req.params;
+    const { feedback } = req.body;
+
+    // Find and update the milestone
+    const milestone = await Milestone.findByIdAndUpdate(
+      milestoneId,
+      { $set: { feedback } },
+      { new: true }
+    );
+
+    if (!milestone) {
+      return res.status(404).json({ message: 'Milestone not found' });
+    }
+
+    res.json({ message: 'Feedback added', milestone });
+  } catch (error) {
+    console.error('Error adding feedback:', error);
+    res.status(500).json({ message: 'Failed to add feedback' });
   }
 });
 
