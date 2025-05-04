@@ -2,19 +2,20 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
-import { FaPen, FaTrash } from "react-icons/fa";
+import MilestoneDetailsModal from "./MilestoneDetailsModal";
+import { FaPen, FaTrash, FaEye } from "react-icons/fa";
 import api from '../api/axios';  // Add this import
 import { useAuth } from '../contexts/AuthContext';
 
 const FIXED_COLUMNS = {
-  Planned: "Planned",
-  InProgress: "In Progress",
-  PendingApproval: "Pending Approval",
-  Completed: "Completed",
+  Planned: { name: "Planned", id: "Planned" },
+  InProgress: { name: "In Progress", id: "InProgress" },
+  PendingApproval: { name: "Pending Approval", id: "PendingApproval" },
+  Completed: { name: "Completed", id: "Completed" },
 };
 
 const PROGRESS_BY_STATUS = {
@@ -24,108 +25,169 @@ const PROGRESS_BY_STATUS = {
   Completed: { percent: 100, color: "#22c55e" }, // Green
 };
 
-const onDragEnd = async (result, columns, setColumns) => {
-  if (!result.destination) return;
-
-  const { source, destination } = result;
-
-  const sourceColumn = columns[source.droppableId];
-  const destColumn = columns[destination.droppableId];
-  const sourceItems = [...sourceColumn.items];
-  const destItems = [...destColumn.items];
-  const [movedItem] = sourceItems.splice(source.index, 1);
-
-  let updatedColumns = {};
-
-  if (source.droppableId !== destination.droppableId) {
-    // Change the milestone's status locally
-    movedItem.status = destination.droppableId; 
-
-    destItems.splice(destination.index, 0, movedItem);
-
-    updatedColumns = {
-      ...columns,
-      [source.droppableId]: {
-        ...sourceColumn,
-        items: sourceItems,
-      },
-      [destination.droppableId]: {
-        ...destColumn,
-        items: destItems,
-      },
-    };
-
-    setColumns(updatedColumns);
-
-    try {
-      // Update the milestone status in the backend
-      await axios.put(`http://localhost:9000/api/milestones/${movedItem._id}`, {
-        status: movedItem.status,
-      });
-      toast.success("Milestone status updated!");
-    } catch (error) {
-      console.error("Error updating milestone status:", error.response?.data || error.message);
-      toast.error("Failed to update milestone status.");
-    }
-  } else {
-    // Just reordering within the same column
-    const copiedItems = [...sourceColumn.items];
-    const [reorderedItem] = copiedItems.splice(source.index, 1);
-    copiedItems.splice(destination.index, 0, reorderedItem);
-
-    updatedColumns = {
-      ...columns,
-      [source.droppableId]: {
-        ...sourceColumn,
-        items: copiedItems,
-      },
-    };
-
-    setColumns(updatedColumns);
-  }
+// Add status normalization function
+const normalizeStatus = (status) => {
+  const statusMap = {
+    'In Progress': 'InProgress',
+    'Pending Approval': 'PendingApproval',
+    'Planned': 'Planned',
+    'Completed': 'Completed'
+  };
+  return statusMap[status] || status;
 };
 
 function StudentDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
-  const [columns, setColumns] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [columns, setColumns] = useState(() => {
+    // Initialize columns with empty arrays
+    const initialColumns = {};
+    Object.keys(FIXED_COLUMNS).forEach(key => {
+      initialColumns[key] = {
+        ...FIXED_COLUMNS[key],
+        items: []
+      };
+    });
+    return initialColumns;
+  });
   const [isAddMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
+  
+  // Extract studentId from URL if viewing from advisor context
+  const studentIdFromUrl = location.pathname.split('/advisor/student/')[1];
+  
+  // Use the appropriate ID for fetching milestones
+  const targetStudentId = studentIdFromUrl || currentUser?._id;
 
-  // Single useEffect for fetching milestones
   useEffect(() => {
-    if (!currentUser?.studentData?._id) return;
-
+    if (!targetStudentId) return;
     fetchMilestones();
-  }, [currentUser, isAddMilestoneModalOpen, isRenderChange]);
+  }, [targetStudentId, isAddMilestoneModalOpen, isRenderChange]);
 
   const fetchMilestones = async () => {
-    if (!currentUser?.studentData?._id) return;
+    if (!targetStudentId) return;
 
     try {
-      console.log('Attempting to fetch milestones for ID:', currentUser.studentData._id);
-      const response = await api.get(`/api/milestones/student/${currentUser.studentData._id}`);
+      setIsLoading(true);
+      console.log('Attempting to fetch milestones for ID:', targetStudentId);
+      const response = await api.get(`/api/milestones/student/${targetStudentId}`);
       
       const milestoneData = response.data;
+      console.log('Raw milestone data:', milestoneData);
+      
       const newColumns = {};
-      Object.entries(FIXED_COLUMNS).forEach(([key, name]) => {
-        const filteredMilestones = milestoneData.filter(m => m.status === key);
+      Object.entries(FIXED_COLUMNS).forEach(([key, column]) => {
+        const filteredMilestones = milestoneData
+          .filter(m => m.status === key)
+          .map(m => ({
+            ...m,
+            id: String(m._id),
+            _id: String(m._id)
+          }));
         newColumns[key] = {
-          name,
+          ...column,
           items: filteredMilestones,
         };
       });
 
+      console.log('Processed columns:', newColumns);
       setColumns(newColumns);
     } catch (error) {
       console.error('Milestone fetch error:', error);
       toast.error("Failed to load milestones");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEdit = (milestone) => {
-    setMilestoneToEdit(milestone);
+  const onDragEnd = async (result) => {
+    if (!result.destination || isLoading) return;
+
+    const { source, destination } = result;
+    const sourceId = source.droppableId;
+    const destId = destination.droppableId;
+
+    console.log('Drag result:', {
+      source: sourceId,
+      destination: destId,
+      draggableId: result.draggableId
+    });
+
+    // Get the source and destination columns
+    const sourceColumn = columns[sourceId];
+    const destColumn = columns[destId];
+
+    if (!sourceColumn || !destColumn) {
+      console.error('Invalid source or destination column:', { sourceId, destId });
+      return;
+    }
+
+    // Create new arrays for the items
+    const sourceItems = Array.from(sourceColumn.items);
+    const destItems = Array.from(destColumn.items);
+
+    // Remove the dragged item from the source
+    const [movedItem] = sourceItems.splice(source.index, 1);
+
+    if (sourceId !== destId) {
+      // Add to destination
+      movedItem.status = destId;
+      destItems.splice(destination.index, 0, movedItem);
+
+      // Update state
+      const newColumns = {
+        ...columns,
+        [sourceId]: {
+          ...sourceColumn,
+          items: sourceItems,
+        },
+        [destId]: {
+          ...destColumn,
+          items: destItems,
+        },
+      };
+
+      setColumns(newColumns);
+
+      // Update in backend
+      try {
+        await api.put(`/api/milestones/${movedItem._id}`, {
+          status: movedItem.status,
+        });
+        toast.success("Milestone status updated!");
+      } catch (error) {
+        console.error("Error updating milestone status:", error);
+        toast.error("Failed to update milestone status.");
+        fetchMilestones(); // Revert on error
+      }
+    } else {
+      // Same column reorder
+      sourceItems.splice(destination.index, 0, movedItem);
+      const newColumns = {
+        ...columns,
+        [sourceId]: {
+          ...sourceColumn,
+          items: sourceItems,
+        },
+      };
+      setColumns(newColumns);
+    }
+  };
+
+  const handleMilestoneClick = (milestone) => {
+    setSelectedMilestone(milestone);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditMilestone = () => {
+    setIsDetailsModalOpen(false);
+    setMilestoneToEdit(selectedMilestone);
+    setSelectedMilestone(null);
     setAddMilestoneModalOpen(true);
   };
 
@@ -139,6 +201,48 @@ function StudentDashboard() {
       toast.error("Failed to delete milestone");
     }
   };
+
+  // Add this function to check auth state
+  const isAuthenticated = () => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    return token && user;
+  };
+
+  const handleBack = () => {
+    // Check if we're authenticated
+    if (!isAuthenticated()) {
+      console.log('Auth state lost, redirecting to login');
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (studentIdFromUrl) {
+      // Store the current path before navigation
+      sessionStorage.setItem('lastPath', location.pathname);
+      navigate('/advisor/dashboard', { 
+        replace: true,
+        state: { 
+          preserveAuth: true,
+          returnTo: location.pathname 
+        }
+      });
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleNavigation = (path) => {
+    if (studentIdFromUrl) {
+      handleBack();
+    } else {
+      navigate(path, { 
+        replace: true,
+        state: { preserveAuth: true }
+      });
+    }
+  };
+
   const handleSignOut = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -149,115 +253,176 @@ function StudentDashboard() {
   
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
-  <div>
-    <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-    <div className="space-y-4">
-      <div className="text-sm text-gray-700 font-medium">Student Profile</div>
-      <ul className="space-y-2 mt-2">
-        <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
-        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
-        <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">Progress</li>
-      </ul>
-    </div>
-  </div>
-
-  {/* Sign Out button */}
-  <div className="space-y-2">
-    <div
-      className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
-      onClick={handleSignOut}
-    >
-      Sign Out
-    </div>
-  </div>
-</aside>
-
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
-          <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
-          <div className="flex items-center gap-4">
-            <button className="text-indigo-600">🔔</button>
-            <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
-            <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="flex h-screen bg-white">
+        {/* Sidebar - Only show navigation items if not in advisor view */}
+        <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+          <div>
+            <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+            {!studentIdFromUrl ? (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-700 font-medium">Student Profile</div>
+                <ul className="space-y-2 mt-2">
+                  <li 
+                    className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
+                    onClick={() => handleNavigation("/student/dashboard")}
+                  >
+                    Home
+                  </li>
+                  <li 
+                    className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" 
+                    onClick={() => handleNavigation("/student/milestones")}
+                  >
+                    My Milestones
+                  </li>
+                  <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                    Progress
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-700 font-medium">
+                Viewing Student Milestones
+              </div>
+            )}
           </div>
-        </header>
 
-        <main className="p-6 overflow-auto">
-          <DragDropContext onDragEnd={(result) => onDragEnd(result, columns, setColumns)}>
-            <div className="flex gap-6 overflow-x-auto">
-              {Object.entries(columns).map(([columnId, column]) => (
-                <div key={columnId} className="w-[23%] min-w-[250px]">
-                  <div className="mb-2 font-semibold text-sm uppercase text-gray-600 flex justify-between">
-                    {column.name}
-                    {column.items.length > 0 && <span className="text-xs text-gray-400">{column.items.length}</span>}
-                  </div>
-                  <Droppable droppableId={columnId}>
-                    {(provided, snapshot) => (
-                      <div {...provided.droppableProps} ref={provided.innerRef} className={`min-h-[500px] p-2 rounded-md border-2 ${snapshot.isDraggingOver ? 'border-indigo-600' : 'border-transparent'}`}>
-                        {column.items.map((item, index) => (
-                          <Draggable key={item._id} draggableId={item._id} index={index}>
-                            {/*major? */}
-                            {(provided) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="bg-white border border-gray-200 rounded-md shadow-sm mb-2 p-3 cursor-pointer">
-                                <div className="flex justify-between items-center mb-1">
-                                  <h3 className="font-semibold text-gray-800 text-sm">{item.title}</h3>
-                                  {item.isMajor && <span title="Major Milestone" className="text-yellow-400">⭐</span>}
-                                </div>
-                                {/* Milestone Description */}
-                                <div className="flex flex-col space-y-1">
-                                  <div className="text-xs text-gray-500">
-                                    {item.dueDate ? (
-                                      <>
-                                        {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br />
-                                        {new Date(item.dueDate).toLocaleDateString()}
-                                      </>
-                                    ) : "No Due Date"}
-                                  </div>
-                                  {/* Progress Bar */}
-                                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-2">
-                                    <div className="h-full rounded-full" style={{ width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`, backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc' }}></div>
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  <div className="flex justify-around mt-2 text-gray-500">
-                                    <FaPen className="cursor-pointer hover:text-indigo-600" size={14} onClick={() => handleEdit(item)} />
-                                    <FaTrash className="cursor-pointer hover:text-red-500" size={14} onClick={() => handleDelete(item._id)} />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              ))}
+          {/* Only show sign out if not in advisor view */}
+          {!studentIdFromUrl && (
+            <div className="space-y-2">
+              <div
+                className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+                onClick={handleSignOut}
+              >
+                Sign Out
+              </div>
             </div>
-          </DragDropContext>
-        </main>
-      </div>
+          )}
+        </aside>
 
-      {isAddMilestoneModalOpen && (
-        <AddMilestoneModal
-          isOpen={isAddMilestoneModalOpen}
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
+            {studentIdFromUrl && (
+              <button 
+                onClick={handleBack}
+                className="text-indigo-600 hover:text-indigo-800 mr-4"
+              >
+                ← Back to Advisor Dashboard
+              </button>
+            )}
+            <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
+            <div className="flex items-center gap-4">
+              <button className="text-indigo-600">🔔</button>
+              <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
+              <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+            </div>
+          </header>
+
+          <main className="p-6 overflow-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              </div>
+            ) : (
+              <div className="flex gap-6">
+                {Object.entries(columns).map(([columnId, column]) => (
+                  <div key={columnId} className="flex-1 min-w-[250px] max-w-[350px]">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">{column.name}</h2>
+                    <Droppable droppableId={columnId}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`bg-gray-50 p-4 rounded-lg min-h-[500px] ${
+                            snapshot.isDraggingOver ? 'bg-gray-100' : ''
+                          }`}
+                        >
+                          {column.items.map((item, index) => (
+                            <Draggable
+                              key={item.id}
+                              draggableId={item.id}
+                              index={index}
+                            >
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`bg-white p-4 rounded-lg shadow-sm mb-4 cursor-move ${
+                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
+                                    <div className="flex items-center gap-2">
+                                      {item.isMajor && <span className="text-yellow-400">⭐</span>}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleMilestoneClick(item);
+                                        }}
+                                        className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50"
+                                      >
+                                        <FaEye size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-600 mt-2">{item.description}</p>
+                                  {item.dueDate && (
+                                    <p className="text-sm text-gray-500 mt-2">
+                                      Due: {new Date(item.dueDate).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
+                                    <div
+                                      className="h-full rounded-full transition-all duration-300"
+                                      style={{
+                                        width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`,
+                                        backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc',
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+
+        {isAddMilestoneModalOpen && (
+          <AddMilestoneModal
+            isOpen={isAddMilestoneModalOpen}
+            onClose={() => {
+              setAddMilestoneModalOpen(false);
+              setMilestoneToEdit(null);
+            }}
+            studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
+            userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
+            refreshMilestones={() => setRenderChange(prev => !prev)}
+            milestoneToEdit={milestoneToEdit}
+          />
+        )}
+
+        <MilestoneDetailsModal
+          isOpen={isDetailsModalOpen}
           onClose={() => {
-            setAddMilestoneModalOpen(false);
-            setMilestoneToEdit(null);
+            setIsDetailsModalOpen(false);
+            setSelectedMilestone(null);
           }}
-          studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
-          userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
-          refreshMilestones={() => setRenderChange(prev => !prev)}
-          milestoneToEdit={milestoneToEdit}
+          milestone={selectedMilestone}
+          onEdit={handleEditMilestone}
         />
-      )}
-    </div>
+      </div>
+    </DragDropContext>
   );
 }
 

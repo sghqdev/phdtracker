@@ -11,7 +11,7 @@ import StudentProgress from "./components/StudentProgress";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from './contexts/AuthContext';
 import AdvisorPendingApprovals from "./components/AdvisorPendingApprovals";
-
+import AllStudentProgress from './components/AllStudentProgress';
 {/*
 function App() {
   console.log('render app..')
@@ -99,14 +99,21 @@ function App() {
           } 
         />
 
+<Route
+  path="/advisor/student-progress"
+  element={
+    <ProtectedRoute allowedRoles={['advisor']}>
+      <AllStudentProgress />
+    </ProtectedRoute>
+  }
+/>
+
         {/* Catch-all route - redirect to dashboard based on role */}
         <Route 
           path="*" 
           element={
             <ProtectedRoute allowedRoles={['student', 'advisor']}>
-              {({ currentUser }) => 
-                currentUser?.role === 'student' ? <Navigate to="/student/dashboard" /> : <Navigate to="/advisor/dashboard" />
-              }
+              <Navigate to="/student/dashboard" />
             </ProtectedRoute>
           } 
         />

@@ -27,7 +27,7 @@ const milestoneSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  feedback: String,
+  feedback: { type: String },
   verified: {
     type: Boolean,
     default: false

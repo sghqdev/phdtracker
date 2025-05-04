@@ -259,7 +259,7 @@ router.post('/milestone/:milestoneId/feedback', protect, authorize('advisor'), a
 
     milestone.feedback = req.body.feedback;
     milestone.lastReviewedBy = req.user._id;
-    milestone.lastReviewedAt = Date.now();
+    milestone.lastReviewedAt = new Date();
     
     await milestone.save();
     res.json(milestone);

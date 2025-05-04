@@ -38,13 +38,27 @@ router.get('/test', async (req, res) => {
 });
 
 // CREATE a Milestone
-router.post('/', async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
-    const milestoneData = { ...req.body, status: req.body.status || 'Planned' }; // Default to "Planned"
+    console.log('Creating milestone with data:', {
+      body: req.body,
+      user: req.user
+    });
+
+    const milestoneData = { 
+      ...req.body,
+      status: req.body.status || 'Planned',
+      studentId: req.user.role === 'student' ? req.user._id : req.body.studentId,
+      userId: req.user._id
+    };
+
+    console.log('Processed milestone data:', milestoneData);
+
     const milestone = new Milestone(milestoneData);
     const savedMilestone = await milestone.save();
     res.status(201).json(savedMilestone);
   } catch (err) {
+    console.error('Milestone creation error:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -68,50 +82,27 @@ router.put('/:id', async (req, res) => {
 
 // GET all Milestones for a Student
 router.get('/student/:studentId', protect, async (req, res) => {
-  console.log('\n=== Milestone Route Debug ===');
+  console.log('\n=== Fetching Milestones ===');
+  console.log('User:', req.user);
+  console.log('Params:', req.params);
+  
   try {
-    const { studentId } = req.params;
-    
-    console.log('1. Search Parameters:', {
-      requestedStudentId: studentId,
-      authenticatedUser: req.user?._id,
-      userRole: req.user?.role
-    });
-
-    // First verify the student exists
-    const student = await User.findById(studentId);
-    console.log('2. Student Check:', {
-      found: !!student,
-      studentId: student?._id,
-      name: student ? `${student.first_name} ${student.last_name}` : 'Not found'
-    });
-
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
-
-    // Then find their milestones
     const milestones = await Milestone.find({ 
-      studentId: student._id 
+      studentId: req.params.studentId 
     });
-
-    console.log('3. Milestone Search Results:', {
-      studentId: student._id,
-      foundCount: milestones.length,
+    
+    console.log('Found milestones:', {
+      count: milestones.length,
       milestones: milestones.map(m => ({
         id: m._id,
         title: m.title,
-        status: m.status,
         studentId: m.studentId
       }))
     });
-
+    
     res.json(milestones);
   } catch (error) {
-    console.error('4. Error in milestone route:', {
-      error: error.message,
-      stack: error.stack
-    });
+    console.error('Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
