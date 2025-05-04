@@ -121,7 +121,6 @@ export default function AdvisorDashboard() {
           />
           <div className="flex items-center gap-4">
             <button className="text-indigo-600"><FaBell /></button>
-            <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
           </div>
         </header>
 

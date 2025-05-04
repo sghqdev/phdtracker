@@ -43,6 +43,16 @@ export default function AllStudentProgress() {
     }
   };
 
+  const handleSignOut = () => {
+    // Clear all auth-related data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    
+    // Clear browser history and redirect to landing page
+    window.location.replace('/');
+  }; 
+
   const getMilestonesByStatus = () => {
     const statusGroups = {
       Planned: [],
@@ -75,33 +85,47 @@ export default function AllStudentProgress() {
 
   const statusGroups = getMilestonesByStatus();
 
+
+
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6">
-        <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-700 font-medium">Navigation</div>
-          <ul className="space-y-2 mt-2">
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/dashboard")}
-            >
-              Dashboard
-            </li>
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/pending-approvals")}
-            >
-              Pending Approvals
-            </li>
-            <li 
-              className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/student-progress")}
-            >
-              Student Progress
-            </li>
-          </ul>
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between">
+        <div>
+          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-700 font-medium">Advisor Dashboard</div>
+            <ul className="space-y-2 mt-2">
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/dashboard")}
+              >
+                Home
+              </li>
+              <li 
+                className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/student-progress")}
+              >
+                Student Progress
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/pending-approvals")}
+              >
+                Pending Approvals
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Sign Out button at the bottom */}
+        <div className="mt-auto">
+          <div
+            className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </div>
         </div>
       </aside>
 

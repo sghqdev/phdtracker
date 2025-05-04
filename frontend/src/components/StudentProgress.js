@@ -149,6 +149,13 @@ function StudentProgress() {
     }
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    window.location.replace('/');
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-white justify-center items-center">
@@ -167,41 +174,52 @@ function StudentProgress() {
 
   return (
     <div className="flex h-screen bg-white">
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6">
-        <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-700 font-medium">Navigation</div>
-          <ul className="space-y-2 mt-2">
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/dashboard")}
-            >
-              Dashboard
-            </li>
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/pending-approvals")}
-            >
-              Pending Approvals
-            </li>
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/student-progress")}
-            >
-              Student Progress
-            </li>
-          </ul>
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between">
+        <div>
+          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-700 font-medium">Navigation</div>
+            <ul className="space-y-2 mt-2">
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/dashboard")}
+              >
+                Dashboard
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/pending-approvals")}
+              >
+                Pending Approvals
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/student-progress")}
+              >
+                Student Progress
+              </li>
+            </ul>
+          </div>
+
+          {student && (
+            <div className="mt-8 border-t pt-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                {student.first_name} {student.last_name}
+              </h2>
+              <p className="text-sm text-gray-600">{student.email}</p>
+            </div>
+          )}
         </div>
 
-        {student && (
-          <div className="mt-8 border-t pt-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {student.first_name} {student.last_name}
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">{student.program}</p>
-            <p className="text-sm text-gray-600">{student.department}</p>
+        {/* Sign Out button at the bottom */}
+        <div className="mt-auto">
+          <div
+            className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+            onClick={handleSignOut}
+          >
+            Sign Out
           </div>
-        )}
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col">
