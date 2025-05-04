@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from "react";
 import api from './api/axios';
-=======
-import React, { useState } from "react";
-import axios from "axios";
->>>>>>> origin/rest-branch
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from './contexts/AuthContext';
@@ -70,6 +65,8 @@ export default function AuthPage() {
           navigate('/student/dashboard');
         } else if (response.data.role === 'advisor') {
           navigate('/advisor/dashboard');
+        } else if (response.data.role === 'admin') {
+          navigate('/admin/dashboard');
         }
       } else {
         // Signup
@@ -83,7 +80,6 @@ export default function AuthPage() {
           return;
         }
 
-<<<<<<< HEAD
         if (password.length < 6) {
           toast.error("Password must be at least 6 characters long");
           return;
@@ -128,17 +124,6 @@ export default function AuthPage() {
           setProgram("");
           setDepartment("");
         }
-=======
-      toast.success(isLogin ? "Logged in successfully" : "Account created successfully");
-      
-      // Redirect based on user role
-      if (user.role === 'admin') {
-        navigate("/admin");
-      } else if (user.role === 'advisor') {
-        navigate("/advisor-dashboard");
-      } else {
-        navigate("/student-dashboard");
->>>>>>> origin/rest-branch
       }
     } catch (error) {
       console.error('Auth error:', error);

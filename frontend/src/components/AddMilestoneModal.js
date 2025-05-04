@@ -91,22 +91,6 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
     }
 
     try {
-<<<<<<< HEAD
-      const milestoneData = {
-        ...formData,
-        studentId: currentUser._id,
-        userId: currentUser._id
-      };
-
-      console.log('Submitting milestone data:', milestoneData);
-
-      if (milestoneToEdit) {
-        await api.put(`/api/milestones/${milestoneToEdit._id}`, milestoneData);
-        toast.success('Milestone updated successfully!');
-      } else {
-        const response = await api.post('/api/milestones', milestoneData);
-        console.log('Milestone creation response:', response.data);
-=======
       // Set time to 11:59 PM UTC for the selected date
       let dueDateUTC = null;
       if (formData.dueDate) {
@@ -117,19 +101,19 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
 
       const milestoneData = {
         ...formData,
-        studentId,
-        userId,
+        studentId: currentUser._id,
+        userId: currentUser._id,
         dueDate: dueDateUTC,
       };
 
+      console.log('Submitting milestone data:', milestoneData);
+
       if (milestoneToEdit) {
-        // UPDATE existing milestone
-        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, milestoneData);
+        await api.put(`/api/milestones/${milestoneToEdit._id}`, milestoneData);
         toast.success('Milestone updated successfully!');
       } else {
-        // CREATE new milestone
-        await axios.post('http://localhost:9000/api/milestones', milestoneData);
->>>>>>> origin/rest-branch
+        const response = await api.post('/api/milestones', milestoneData);
+        console.log('Milestone creation response:', response.data);
         toast.success('Milestone created successfully!');
       }
 
