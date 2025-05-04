@@ -19,6 +19,10 @@ const milestoneSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  reminderDate: {
+    type: Date,
+    default: null,
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -47,5 +51,11 @@ const milestoneSchema = new mongoose.Schema({
     required: true
   }
 }, { timestamps: true });
+
+// Update the updatedAt timestamp before saving
+milestoneSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
 
 export default mongoose.model('Milestone', milestoneSchema);

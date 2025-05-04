@@ -11,7 +11,9 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
     dueDate: '',
     status: 'Planned',
     isMajor: false,
+    reminderDate: '',
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (milestoneToEdit) {
@@ -21,6 +23,7 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
         dueDate: milestoneToEdit.dueDate ? milestoneToEdit.dueDate.split('T')[0] : '',
         status: milestoneToEdit.status,
         isMajor: milestoneToEdit.isMajor || false,
+        reminderDate: milestoneToEdit.reminderDate ? milestoneToEdit.reminderDate.split('T')[0] : '',
       });
     } else {
       setFormData({
@@ -29,21 +32,50 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
         dueDate: '',
         status: 'Planned',
         isMajor: false,
+        reminderDate: '',
       });
     }
+    setErrors({});
   }, [milestoneToEdit]);
 
-  if (!isOpen) return null;
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (formData.reminderDate && formData.dueDate) {
+      const reminderDate = new Date(formData.reminderDate);
+      const dueDate = new Date(formData.dueDate);
+      
+      if (reminderDate > dueDate) {
+        newErrors.reminderDate = "Reminder date cannot be later than the due date";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
 
     console.log('Current user data:', currentUser);
 
@@ -59,6 +91,7 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
     }
 
     try {
+<<<<<<< HEAD
       const milestoneData = {
         ...formData,
         studentId: currentUser._id,
@@ -73,6 +106,30 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
       } else {
         const response = await api.post('/api/milestones', milestoneData);
         console.log('Milestone creation response:', response.data);
+=======
+      // Set time to 11:59 PM UTC for the selected date
+      let dueDateUTC = null;
+      if (formData.dueDate) {
+        const [year, month, day] = formData.dueDate.split('-');
+        const date = new Date(Date.UTC(year, month - 1, day, 23, 59, 0));
+        dueDateUTC = date.toISOString();
+      }
+
+      const milestoneData = {
+        ...formData,
+        studentId,
+        userId,
+        dueDate: dueDateUTC,
+      };
+
+      if (milestoneToEdit) {
+        // UPDATE existing milestone
+        await axios.put(`http://localhost:9000/api/milestones/${milestoneToEdit._id}`, milestoneData);
+        toast.success('Milestone updated successfully!');
+      } else {
+        // CREATE new milestone
+        await axios.post('http://localhost:9000/api/milestones', milestoneData);
+>>>>>>> origin/rest-branch
         toast.success('Milestone created successfully!');
       }
 
@@ -87,6 +144,8 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
       toast.error(error.response?.data?.error || 'Failed to save milestone.');
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -126,6 +185,20 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
               className="w-full p-2 border rounded-md"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Reminder Date</label>
+            <input
+              type="date"
+              name="reminderDate"
+              value={formData.reminderDate}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded-md ${errors.reminderDate ? 'border-red-500' : ''}`}
+              max={formData.dueDate}
+            />
+            {errors.reminderDate && (
+              <p className="text-red-500 text-sm mt-1">{errors.reminderDate}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Status</label>

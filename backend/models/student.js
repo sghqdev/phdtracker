@@ -6,27 +6,37 @@ const studentSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
-    advisor_id: { 
+    advisorId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Advisor' 
+        ref: 'User' 
     },
     firstname: { 
         type: String, 
-        required: true },
+        required: true 
+    },
     lastname: { 
         type: String, 
-        required: true },
+        required: true 
+    },
     major: { 
         type: String 
     },
     concentration: { 
         type: String 
     },
-    program_status: { 
-        type: String 
+    programStatus: { 
+        type: String,
+        default: 'Active'
+    },
+    email: {
+        type: String
+    },
+    unreadNotesCount: {
+        type: Number,
+        default: 0
     }
-  }, { timestamps: true });;
-  
-  const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
-  export default mongoose.model('Student', studentSchema);
+}, { timestamps: true });
+
+const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
+export default Student;
   

@@ -1,5 +1,7 @@
 import express from 'express';
-import Student from '../models/student.js'; // Assuming model is at /models/student.js
+import Student from '../models/Student.js';
+import Note from '../models/note.js';
+import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
 
@@ -15,47 +17,105 @@ router.post('/', async (req, res) => {
 });
 
 // Get ALL Students
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
-    const students = await Student.find().populate('userId advisorId');
-    res.json(students);
+    const students = await Student.find()
+      .populate({
+        path: 'userId',
+        select: 'email'
+      })
+      .lean();
+    
+    // Get notes count for each student
+    const studentsWithNotes = await Promise.all(students.map(async (student) => {
+      const notes = await Note.find({ studentId: student._id });
+      const unreadNotes = notes.filter(note => !note.isRead).length;
+      return {
+        ...student,
+        id: student._id,
+        email: student.userId?.email || student.email || '',  // Try both userId.email and student.email
+        notes,
+        unreadNotesCount: unreadNotes
+      };
+    }));
+
+    res.json(studentsWithNotes);
   } catch (err) {
+    console.error('Error fetching students:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get Single Student by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', verifyToken, async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id).populate('userId advisorId');
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-    res.json(student);
+    const student = await Student.findById(req.params.id).populate('userId');
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    // Add id field for frontend compatibility
+    const studentResponse = student.toObject();
+    studentResponse.id = studentResponse._id;
+    res.json(studentResponse);
   } catch (err) {
+    console.error('Error fetching student:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Update a Student
-router.put('/:id', async (req, res) => {
+router.put('/:id', verifyToken, async (req, res) => {
   try {
     const updatedStudent = await Student.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
       { new: true }
-    );
-    if (!updatedStudent) return res.status(404).json({ error: 'Student not found' });
-    res.json(updatedStudent);
+    ).populate('userId');
+    
+    if (!updatedStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    // Add id field for frontend compatibility
+    const studentResponse = updatedStudent.toObject();
+    studentResponse.id = studentResponse._id;
+    res.json(studentResponse);
   } catch (err) {
+    console.error('Error updating student:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Reset unread notes count
+router.put('/:id/reset-unread', verifyToken, async (req, res) => {
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      { unreadNotesCount: 0 },
+      { new: true }
+    );
+    
+    if (!updatedStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    // Add id field for frontend compatibility
+    const studentResponse = updatedStudent.toObject();
+    studentResponse.id = studentResponse._id;
+    res.json(studentResponse);
+  } catch (err) {
+    console.error('Error resetting unread count:', err);
     res.status(400).json({ error: err.message });
   }
 });
 
 // Delete a Student
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message: 'Student deleted successfully' });
   } catch (err) {
+    console.error('Error deleting student:', err);
     res.status(500).json({ error: err.message });
   }
 });

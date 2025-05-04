@@ -8,8 +8,9 @@ import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import MilestoneDetailsModal from "./MilestoneDetailsModal";
 import { FaPen, FaTrash, FaEye } from "react-icons/fa";
-import api from '../api/axios';  // Add this import
+import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const FIXED_COLUMNS = {
   Planned: { name: "Planned", id: "Planned" },
@@ -57,6 +58,8 @@ function StudentDashboard() {
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
   const [isRenderChange, setRenderChange] = useState(false);
+  const [unreadNotesCount, setUnreadNotesCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Extract studentId from URL if viewing from advisor context
   const studentIdFromUrl = location.pathname.split('/advisor/student/')[1];
@@ -67,6 +70,7 @@ function StudentDashboard() {
   useEffect(() => {
     if (!targetStudentId) return;
     fetchMilestones();
+    fetchStudentData();
   }, [targetStudentId, isAddMilestoneModalOpen, isRenderChange]);
 
   const fetchMilestones = async () => {
@@ -102,6 +106,27 @@ function StudentDashboard() {
       toast.error("Failed to load milestones");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchStudentData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const student = JSON.parse(localStorage.getItem('student'));
+      
+      if (student && student.id) {
+        const response = await axios.get(
+          `http://localhost:9000/api/students/${student.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        setUnreadNotesCount(response.data.unreadNotesCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
     }
   };
 
@@ -202,6 +227,36 @@ function StudentDashboard() {
     }
   };
 
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    // Filter milestones based on search query
+    const filteredColumns = {};
+    Object.entries(columns).forEach(([key, column]) => {
+      filteredColumns[key] = {
+        ...column,
+        items: column.items.filter(milestone => 
+          milestone.title.toLowerCase().includes(query.toLowerCase()) ||
+          milestone.description.toLowerCase().includes(query.toLowerCase())
+        )
+      };
+    });
+    setColumns(filteredColumns);
+  };
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/auth');
+  };
+
   // Add this function to check auth state
   const isAuthenticated = () => {
     const token = localStorage.getItem('token');
@@ -209,220 +264,162 @@ function StudentDashboard() {
     return token && user;
   };
 
-  const handleBack = () => {
-    // Check if we're authenticated
-    if (!isAuthenticated()) {
-      console.log('Auth state lost, redirecting to login');
-      navigate('/', { replace: true });
-      return;
-    }
-
-    if (studentIdFromUrl) {
-      // Store the current path before navigation
-      sessionStorage.setItem('lastPath', location.pathname);
-      navigate('/advisor/dashboard', { 
-        replace: true,
-        state: { 
-          preserveAuth: true,
-          returnTo: location.pathname 
-        }
-      });
-    } else {
-      navigate(-1);
-    }
-  };
-
-  const handleNavigation = (path) => {
-    if (studentIdFromUrl) {
-      handleBack();
-    } else {
-      navigate(path, { 
-        replace: true,
-        state: { preserveAuth: true }
-      });
-    }
-  };
-
-  const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('student');
-    toast.success("Signed out successfully!");
-    navigate("/", { replace: true });
-  };
-  
-
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex h-screen bg-white">
-        {/* Sidebar - Only show navigation items if not in advisor view */}
-        <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
-          <div>
-            <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-            {!studentIdFromUrl ? (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-700 font-medium">Student Profile</div>
-                <ul className="space-y-2 mt-2">
-                  <li 
-                    className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
-                    onClick={() => handleNavigation("/student/dashboard")}
-                  >
-                    Home
-                  </li>
-                  <li 
-                    className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" 
-                    onClick={() => handleNavigation("/student/milestones")}
-                  >
-                    My Milestones
-                  </li>
-                  <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
-                    Progress
-                  </li>
-                </ul>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-700 font-medium">
-                Viewing Student Milestones
-              </div>
-            )}
+    <div className="flex h-screen bg-white">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+        <div>
+          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-700 font-medium">Student Profile</div>
+            <ul className="space-y-2 mt-2">
+              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer relative" onClick={() => navigate("/notes")}>
+                Notes
+                {unreadNotesCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadNotesCount}
+                  </span>
+                )}
+              </li>
+            </ul>
           </div>
-
-          {/* Only show sign out if not in advisor view */}
-          {!studentIdFromUrl && (
-            <div className="space-y-2">
-              <div
-                className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
-            {studentIdFromUrl && (
-              <button 
-                onClick={handleBack}
-                className="text-indigo-600 hover:text-indigo-800 mr-4"
-              >
-                ← Back to Advisor Dashboard
-              </button>
-            )}
-            <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
-            <div className="flex items-center gap-4">
-              <button className="text-indigo-600">🔔</button>
-              <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
-              <div className="h-8 w-8 rounded-full bg-gray-200"></div>
-            </div>
-          </header>
-
-          <main className="p-6 overflow-auto">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              </div>
-            ) : (
-              <div className="flex gap-6">
-                {Object.entries(columns).map(([columnId, column]) => (
-                  <div key={columnId} className="flex-1 min-w-[250px] max-w-[350px]">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">{column.name}</h2>
-                    <Droppable droppableId={columnId}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`bg-gray-50 p-4 rounded-lg min-h-[500px] ${
-                            snapshot.isDraggingOver ? 'bg-gray-100' : ''
-                          }`}
-                        >
-                          {column.items.map((item, index) => (
-                            <Draggable
-                              key={item.id}
-                              draggableId={item.id}
-                              index={index}
-                            >
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`bg-white p-4 rounded-lg shadow-sm mb-4 cursor-move ${
-                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
-                                  }`}
-                                >
-                                  <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
-                                    <div className="flex items-center gap-2">
-                                      {item.isMajor && <span className="text-yellow-400">⭐</span>}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleMilestoneClick(item);
-                                        }}
-                                        className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50"
-                                      >
-                                        <FaEye size={16} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <p className="text-sm text-gray-600 mt-2">{item.description}</p>
-                                  {item.dueDate && (
-                                    <p className="text-sm text-gray-500 mt-2">
-                                      Due: {new Date(item.dueDate).toLocaleDateString()}
-                                    </p>
-                                  )}
-                                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
-                                    <div
-                                      className="h-full rounded-full transition-all duration-300"
-                                      style={{
-                                        width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`,
-                                        backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc',
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </div>
-                ))}
-              </div>
-            )}
-          </main>
         </div>
 
-        {isAddMilestoneModalOpen && (
-          <AddMilestoneModal
-            isOpen={isAddMilestoneModalOpen}
-            onClose={() => {
-              setAddMilestoneModalOpen(false);
-              setMilestoneToEdit(null);
-            }}
-            studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
-            userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
-            refreshMilestones={() => setRenderChange(prev => !prev)}
-            milestoneToEdit={milestoneToEdit}
-          />
-        )}
+        {/* Sign Out button */}
+        <div className="space-y-2">
+          <div
+            className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </div>
+        </div>
+      </aside>
 
-        <MilestoneDetailsModal
-          isOpen={isDetailsModalOpen}
-          onClose={() => {
-            setIsDetailsModalOpen(false);
-            setSelectedMilestone(null);
-          }}
-          milestone={selectedMilestone}
-          onEdit={handleEditMilestone}
-        />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
+          {studentIdFromUrl && (
+            <button 
+              onClick={handleBack}
+              className="text-indigo-600 hover:text-indigo-800 mr-4"
+            >
+              ← Back to Advisor Dashboard
+            </button>
+          )}
+          <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
+          </div>
+        </header>
+
+        <main className="p-6 overflow-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <div className="flex gap-6">
+              {Object.entries(columns).map(([columnId, column]) => (
+                <div key={columnId} className="flex-1 min-w-[250px] max-w-[350px]">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">{column.name}</h2>
+                  <Droppable droppableId={columnId}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`bg-gray-50 p-4 rounded-lg min-h-[500px] ${
+                          snapshot.isDraggingOver ? 'bg-gray-100' : ''
+                        }`}
+                      >
+                        {column.items.map((item, index) => (
+                          <Draggable
+                            key={item.id}
+                            draggableId={item.id}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`bg-white p-4 rounded-lg shadow-sm mb-4 cursor-move ${
+                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
+                                }`}
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
+                                  <div className="flex items-center gap-2">
+                                    {item.isMajor && <span className="text-yellow-400">⭐</span>}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMilestoneClick(item);
+                                      }}
+                                      className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50"
+                                    >
+                                      <FaEye size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-2">{item.description}</p>
+                                {item.dueDate && (
+                                  <p className="text-sm text-gray-500 mt-2">
+                                    Due: {new Date(item.dueDate).toLocaleDateString()}
+                                  </p>
+                                )}
+                                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-300"
+                                    style={{
+                                      width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`,
+                                      backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
       </div>
-    </DragDropContext>
+
+      {isAddMilestoneModalOpen && (
+        <AddMilestoneModal
+          isOpen={isAddMilestoneModalOpen}
+          onClose={() => {
+            setAddMilestoneModalOpen(false);
+            setMilestoneToEdit(null);
+          }}
+          studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
+          userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
+          refreshMilestones={() => setRenderChange(prev => !prev)}
+          milestoneToEdit={milestoneToEdit}
+        />
+      )}
+
+      <MilestoneDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedMilestone(null);
+        }}
+        milestone={selectedMilestone}
+        onEdit={handleEditMilestone}
+      />
+    </div>
   );
 }
 
