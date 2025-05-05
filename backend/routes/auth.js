@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.js';
 import { protect } from '../middleware/auth.js';
+import Student from '../models/student.js';
 
 const router = express.Router();
 
@@ -46,25 +47,25 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/'
     });
 
-    // Add this log to verify token is being set
-    console.log('Setting auth token:', {
+    // Log the cookie being set
+    console.log('Setting auth cookie:', {
       userId: user._id,
       tokenPresent: !!token,
-      cookies: res.getHeaders()['set-cookie']
-    });
-
-    // Log the token being set
-    console.log('Setting auth token for user:', {
-      userId: user._id,
-      role: user.role,
-      tokenSet: !!token
+      cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/'
+      }
     });
 
     // Send user data (without password)
-    res.json({
+    const userData = {
       _id: user._id,
       email: user.email,
       first_name: user.first_name,
@@ -72,6 +73,27 @@ router.post('/login', async (req, res) => {
       role: user.role,
       program: user.program,
       department: user.department
+    };
+
+    let profile = null;
+    if (user.role.toLowerCase() === 'student') {
+      const student = await Student.findOne({ userId: user._id });
+      if (student) {
+        profile = { student: {
+          id: student._id,
+          firstname: student.firstname,
+          lastname: student.lastname,
+          major: student.major,
+          programStatus: student.programStatus
+        }};
+      }
+    }
+
+    console.log('Login successful, sending response:', { userData, profile });
+    res.json({
+      success: true,
+      user: userData,
+      ...profile
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -229,8 +251,26 @@ router.get('/status', protect, async (req, res) => {
       program: req.user.program,
       department: req.user.department
     };
+
+    let profile = null;
+    if (user.role.toLowerCase() === 'student') {
+      const student = await Student.findOne({ userId: user._id });
+      if (student) {
+        profile = { student: {
+          id: student._id,
+          firstname: student.firstname,
+          lastname: student.lastname,
+          major: student.major,
+          programStatus: student.programStatus
+        }};
+      }
+    }
     
-    res.json(user);
+    res.json({
+      success: true,
+      user,
+      ...profile
+    });
   } catch (error) {
     console.error('Auth status check error:', error);
     res.status(500).json({ message: 'Error checking auth status' });

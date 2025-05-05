@@ -1,82 +1,78 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from '../api/axios'; // Use the configured axios instance
+import api from '../api/axios';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
-
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
     try {
-      // Initialize from localStorage
-      const storedUser = localStorage.getItem('user');
-      const student = localStorage.getItem('student');
+      const response = await api.get('/api/auth/status');
+      console.log('Auth status response:', response.data);
       
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        if (student) {
-          return {
-            ...userData,
-            studentData: JSON.parse(student)
-          };
-        }
-        return userData;
+      if (response.data.success && response.data.user) {
+        // Combine user data with profile data
+        setCurrentUser({
+          ...response.data.user,
+          ...(response.data.student ? { student: response.data.student } : {})
+        });
+      } else {
+        setCurrentUser(null);
       }
-      return null;
     } catch (error) {
-      // If there's an error parsing, clear the invalid data
-      localStorage.removeItem('user');
-      localStorage.removeItem('student');
-      return null;
-    }
-  });
-  
-  const [loading, setLoading] = useState(false);
-
-  const login = (userData) => {
-    if (!userData || !userData.role) {
-      throw new Error('Invalid login data');
-    }
-    
-    // Prepare user data with student data if present
-    const userToStore = userData.role === 'student' && userData.studentData 
-      ? { ...userData }
-      : userData;
-    
-    // Set the current user
-    setCurrentUser(userToStore);
-    
-    // Store in localStorage
-    localStorage.setItem('user', JSON.stringify(userData));
-    
-    if (userData.role === 'student' && userData.studentData) {
-      localStorage.setItem('student', JSON.stringify(userData.studentData));
+      console.error('Auth check error:', error.message);
+      setCurrentUser(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('student');
+  const login = async (email, password) => {
+    try {
+      const response = await api.post('/api/auth/login', { email, password });
+      console.log('Login response:', response.data);
+      
+      if (response.data.success && response.data.user) {
+        // Combine user data with profile data
+        setCurrentUser({
+          ...response.data.user,
+          ...(response.data.student ? { student: response.data.student } : {})
+        });
+        return { success: true, user: response.data.user };
+      } else {
+        return { success: false, error: 'Invalid response from server' };
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Login failed' 
+      };
+    }
   };
 
-  const getDashboardByRole = (role) => {
-    switch (role) {
-      case 'student':
-        return '/student/dashboard';
-      case 'advisor':
-        return '/advisor/dashboard';
-      default:
-        return '/';
+  const logout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setCurrentUser(null);
     }
   };
 
   const value = {
     currentUser,
-    loading,
+    isLoading,
     login,
     logout,
-    getDashboardByRole
+    checkAuthStatus
   };
 
   return (
@@ -86,13 +82,21 @@ export function AuthProvider({ children }) {
   );
 }
 
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
 export function AuthProviderOld({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get('/api/auth/status');
+      const response = await api.get('/api/auth/status');
       if (response.data) {
         setCurrentUser(response.data);
       } else {
@@ -130,7 +134,7 @@ export function AuthProviderOld({ children }) {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await api.post('/api/auth/login', { email, password });
       const data = response.data;
       setCurrentUser(data);
       return {
@@ -144,7 +148,7 @@ export function AuthProviderOld({ children }) {
 
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await api.post('/api/auth/logout');
       setCurrentUser(null);
     } catch (error) {
       console.error('Logout error:', error);

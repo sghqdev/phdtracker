@@ -1,51 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { FaUserGraduate, FaClipboardCheck, FaBell } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AdvisorDashboard() {
   const [students, setStudents] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [pendingLoading, setPendingLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const isMounted = useRef(true);
+  const { logout } = useAuth();
 
   useEffect(() => {
+    isMounted.current = true;
     fetchAdvisedStudents();
     fetchPendingCount();
+
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const fetchAdvisedStudents = async () => {
+    if (!isMounted.current) return;
+    
     try {
-      setLoading(true);
-      console.log('Fetching students...');
+      setStudentsLoading(true);
       const response = await api.get('/api/advisor/students');
-      console.log('Students response:', response.data);
-      setStudents(response.data);
+      if (isMounted.current) {
+        setStudents(Array.isArray(response.data) ? response.data : []);
+      }
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error('Failed to fetch students');
+      if (isMounted.current) {
+        setStudents([]);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setStudentsLoading(false);
+      }
     }
   };
 
   const fetchPendingCount = async () => {
+    if (!isMounted.current) return;
+    
     try {
-      // Use the correct advisor route for pending milestones
+      setPendingLoading(true);
       const response = await api.get('/api/advisor/pending-milestones');
-      console.log('Pending milestones response:', response.data);
-      setPendingCount(response.data.length);
+      if (isMounted.current) {
+        setPendingCount(Array.isArray(response.data) ? response.data.length : 0);
+      }
     } catch (error) {
       console.error('Error fetching pending count:', error);
-      setPendingCount(0); // Set to 0 on error
+      if (isMounted.current) {
+        setPendingCount(0);
+      }
+    } finally {
+      if (isMounted.current) {
+        setPendingLoading(false);
+      }
     }
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    // Set mounted to false to prevent state updates
+    isMounted.current = false;
+    
+    // Use the logout function from AuthContext
+    logout();
+    
+    // Show success message and navigate
     toast.success("Signed out successfully!");
     navigate("/");
   };
@@ -55,7 +84,7 @@ export default function AdvisorDashboard() {
     student.program.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (studentsLoading || pendingLoading) {
     return (
       <div className="flex h-screen bg-white">
         <div className="flex-1 flex justify-center items-center">
@@ -121,7 +150,9 @@ export default function AdvisorDashboard() {
           />
           <div className="flex items-center gap-4">
             <button className="text-indigo-600"><FaBell /></button>
-            <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
+            <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+              <span className="text-white font-medium">A</span>
+            </div>
           </div>
         </header>
 

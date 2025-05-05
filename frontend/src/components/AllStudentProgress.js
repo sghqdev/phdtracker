@@ -112,7 +112,7 @@ export default function AllStudentProgress() {
         </header>
 
         <main className="p-6 overflow-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Object.entries(PROGRESS_BY_STATUS).map(([status, { color, percent }]) => (
               <div 
                 key={status}
@@ -139,26 +139,26 @@ export default function AllStudentProgress() {
                               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                             >
                               {milestone.studentName}
-                            </button>
-                          </div>
+              </button>
+            </div>
                           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div
+                      <div
                               className="h-full rounded-full transition-all duration-300"
-                              style={{
+                        style={{
                                 width: `${percent}%`,
                                 backgroundColor: color,
-                              }}
+                        }}
                             />
                           </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
+              ) : (
                     <div className="text-gray-400 text-sm text-center py-4">No milestones in this status.</div>
-                  )}
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
+          </div>
+        ))}
           </div>
         </main>
       </div>

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import express from 'express';
 import './config/passport.js';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/authentication.js';
 import advisorRoutes from './routes/advisorRoutes.js';
 import milestoneRoutes from './routes/milestoneRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { startReminderScheduler } from './utils/reminderScheduler.js';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -23,10 +24,14 @@ const app = express();
 // Configure CORS
 app.use(cors({ 
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cookie'],
+    exposedHeaders: ['set-cookie']
 }));
 
 // Configure middleware
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

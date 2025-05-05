@@ -3,14 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from './contexts/AuthContext';
 
 export default function LandingPage() {
-  const { currentUser, getDashboardByRole } = useAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  const getDashboardPath = (role) => {
+    switch (role) {
+      case 'student':
+        return '/student/dashboard';
+      case 'advisor':
+        return '/advisor/dashboard';
+      case 'admin':
+        return '/admin/dashboard';
+      default:
+        return '/';
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
-      navigate(getDashboardByRole(currentUser.role));
+      navigate(getDashboardPath(currentUser.role));
     }
-  }, [currentUser, navigate, getDashboardByRole]);
+  }, [currentUser, navigate]);
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 relative overflow-hidden">

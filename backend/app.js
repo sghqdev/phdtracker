@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/authentication.js';
 import advisorRoutes from './routes/advisorRoutes.js';
 import milestoneRoutes from './routes/milestoneRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
@@ -12,33 +12,46 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',  // Explicitly allow only your frontend
+  origin: 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cookie'],
   exposedHeaders: ['set-cookie']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Parse cookies and JSON bodies
 app.use(cookieParser());
+app.use(express.json());
 
 // Request logging middleware
 app.use((req, res, next) => {
   console.log('Incoming request:', {
     method: req.method,
     url: req.url,
-    headers: req.headers,
-    body: req.body,
-    query: req.query
+    path: req.path,
+    baseUrl: req.baseUrl,
+    originalUrl: req.originalUrl,
+    cookies: req.cookies,
+    headers: req.headers
   });
   next();
 });
 
+// Debug route registration
+console.log('Registering routes...');
+
 // Routes
 app.use('/api/auth', authRoutes);
+console.log('Auth routes registered at /api/auth');
+
 app.use('/api/advisor', advisorRoutes);
+console.log('Advisor routes registered at /api/advisor');
+
 app.use('/api/milestones', milestoneRoutes);
+console.log('Milestone routes registered at /api/milestones');
+
 app.use('/api/students', studentRoutes);
+console.log('Student routes registered at /api/students');
 
 // Add this before your routes
 app.get('/api/test', (req, res) => {
@@ -55,7 +68,7 @@ const checkDatabase = async () => {
     
     // Check specific student's milestones
     const studentMilestones = await Milestone.find({
-      studentId: "68102dc3da15e6876683b296"
+      student: "68102dc3da15e6876683b296"
     });
     console.log('Milestones for student:', studentMilestones.length);
   } catch (err) {
@@ -86,6 +99,13 @@ app.use((err, req, res, next) => {
 
 // Handle 404
 app.use((req, res) => {
+  console.log('404 Not Found:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    baseUrl: req.baseUrl,
+    originalUrl: req.originalUrl
+  });
   res.status(404).json({ message: 'Route not found' });
 });
 

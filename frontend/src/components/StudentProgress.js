@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from '../api/axios';
 import toast from "react-hot-toast";
 import { FaCheck, FaTimes, FaEye } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 
 const FIXED_COLUMNS = {
   Planned: "Planned",
@@ -21,6 +22,7 @@ const PROGRESS_BY_STATUS = {
 function StudentProgress() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [student, setStudent] = useState(null);
   const [columns, setColumns] = useState({});
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,30 @@ function StudentProgress() {
         status = 'InProgress';
       }
 
-      await api.put(`/api/milestones/${milestoneId}`, { status });
+      // Get the feedback from the textarea
+      const feedbackElement = document.querySelector(`textarea[data-milestone-id="${milestoneId}"]`);
+      const feedback = feedbackElement ? feedbackElement.value : '';
+
+      console.log('Updating milestone:', {
+        milestoneId,
+        action,
+        status,
+        feedback,
+        timestamp: new Date().toISOString()
+      });
+
+      const response = await api.put(`/api/milestones/${milestoneId}`, { 
+        status,
+        feedback,
+        lastReviewedAt: new Date()
+      });
+
+      console.log('Milestone update response:', {
+        status: response.status,
+        data: response.data,
+        timestamp: new Date().toISOString()
+      });
+
       toast.success(
         action === 'approve'
           ? 'Milestone approved and marked as completed!'
@@ -144,8 +169,13 @@ function StudentProgress() {
       );
       fetchStudentAndMilestones();
     } catch (error) {
-      console.error('Error updating milestone:', error);
-      toast.error('Failed to update milestone');
+      console.error('Error updating milestone:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        timestamp: new Date().toISOString()
+      });
+      toast.error(error.response?.data?.error || 'Failed to update milestone');
     }
   };
 
@@ -162,46 +192,137 @@ function StudentProgress() {
   }
 
   if (!milestones.length) {
-    return <div>No milestones found</div>;
+    return (
+      <div className="flex h-screen bg-white">
+        <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+          <div>
+            <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+            <div className="space-y-4">
+              <div className="text-sm text-gray-700 font-medium">Navigation</div>
+              <ul className="space-y-2 mt-2">
+                <li 
+                  className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                  onClick={() => navigate("/advisor/dashboard")}
+                >
+                  Dashboard
+                </li>
+                <li 
+                  className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
+                  onClick={() => navigate("/advisor/student-progress")}
+                >
+                  Student Progress
+                </li>
+                <li 
+                  className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                  onClick={() => navigate("/advisor/pending-approvals")}
+                >
+                  Pending Approvals
+                </li>
+              </ul>
+            </div>
+
+            {student && (
+              <div className="mt-8 border-t pt-4">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {student.first_name} {student.last_name}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">{student.program}</p>
+                <p className="text-sm text-gray-600">{student.department}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Sign Out button */}
+          <div className="space-y-2">
+            <div
+              className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+              onClick={() => {
+                logout();
+                toast.success("Signed out successfully!");
+                navigate("/");
+              }}
+            >
+              Sign Out
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white shadow-sm border-b px-6 py-4">
+            <h1 className="text-2xl font-semibold text-gray-800">Student Progress</h1>
+          </header>
+
+          <main className="p-6 overflow-auto">
+            <div className="text-center py-12">
+              <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No milestones found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                This student doesn't have any milestones yet.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex h-screen bg-white">
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6">
-        <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-700 font-medium">Navigation</div>
-          <ul className="space-y-2 mt-2">
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/dashboard")}
-            >
-              Dashboard
-            </li>
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/pending-approvals")}
-            >
-              Pending Approvals
-            </li>
-            <li 
-              className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-              onClick={() => navigate("/advisor/student-progress")}
-            >
-              Student Progress
-            </li>
-          </ul>
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+        <div>
+          <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-700 font-medium">Navigation</div>
+            <ul className="space-y-2 mt-2">
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/dashboard")}
+              >
+                Dashboard
+              </li>
+              <li 
+                className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/student-progress")}
+              >
+                Student Progress
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/pending-approvals")}
+              >
+                Pending Approvals
+              </li>
+            </ul>
+          </div>
+
+          {student && (
+            <div className="mt-8 border-t pt-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                {student.first_name} {student.last_name}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">{student.program}</p>
+              <p className="text-sm text-gray-600">{student.department}</p>
+            </div>
+          )}
         </div>
 
-        {student && (
-          <div className="mt-8 border-t pt-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {student.first_name} {student.last_name}
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">{student.program}</p>
-            <p className="text-sm text-gray-600">{student.department}</p>
+        {/* Sign Out button */}
+        <div className="space-y-2">
+          <div
+            className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
+            onClick={() => {
+              logout();
+              toast.success("Signed out successfully!");
+              navigate("/");
+            }}
+          >
+            Sign Out
           </div>
-        )}
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col">
@@ -254,22 +375,22 @@ function StudentProgress() {
                       {item.status === 'PendingApproval' && (
                         <div className="mt-4 space-y-2">
                           <textarea
+                            data-milestone-id={item._id}
                             placeholder="Add feedback (optional)..."
                             className="w-full p-2 border rounded-md text-sm"
-                            onBlur={(e) => provideFeedback(item._id, e.target.value)}
                           />
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAction(item._id, 'approve')}
-                              className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 flex items-center justify-center gap-2"
-                            >
-                              <FaCheck /> Approve
-                            </button>
                             <button
                               onClick={() => handleAction(item._id, 'requestChanges')}
                               className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 flex items-center justify-center gap-2"
                             >
                               <FaTimes /> Request Changes
+                            </button>
+                            <button
+                              onClick={() => handleAction(item._id, 'approve')}
+                              className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 flex items-center justify-center gap-2"
+                            >
+                              <FaCheck /> Approve
                             </button>
                           </div>
                         </div>

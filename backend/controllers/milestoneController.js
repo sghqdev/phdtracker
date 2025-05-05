@@ -6,15 +6,15 @@ import Notification from '../models/notification.js';
 export const createMilestone = async (req, res) => {
   try {
     const { title, description, dueDate, status, isMajor, reminderDate } = req.body;
-    const studentId = req.params.studentId;
+    const student = req.params.studentId;
 
-    const student = await Student.findById(studentId);
-    if (!student) {
+    const studentDoc = await Student.findById(student);
+    if (!studentDoc) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
     const milestone = new Milestone({
-      student: studentId,
+      student,
       title,
       description,
       dueDate,
@@ -27,8 +27,8 @@ export const createMilestone = async (req, res) => {
 
     // Create a notification for the milestone
     const notification = new Notification({
-      student: studentId,
-      type: 'milestone',
+      userId: student,
+      milestoneId: milestone._id,
       title: 'New Milestone Created',
       message: `A new milestone "${title}" has been created for you.`,
       isRead: false
@@ -66,8 +66,8 @@ export const updateMilestone = async (req, res) => {
 
     // Create a notification for the milestone update
     const notification = new Notification({
-      student: milestone.student,
-      type: 'milestone',
+      userId: milestone.student,
+      milestoneId: milestone._id,
       title: 'Milestone Updated',
       message: `The milestone "${title}" has been updated.`,
       isRead: false
@@ -109,8 +109,8 @@ export const deleteMilestone = async (req, res) => {
 
     // Create a notification for the milestone deletion
     const notification = new Notification({
-      student: milestone.student,
-      type: 'milestone',
+      userId: milestone.student,
+      milestoneId: milestone._id,
       title: 'Milestone Deleted',
       message: `The milestone "${milestone.title}" has been deleted.`,
       isRead: false

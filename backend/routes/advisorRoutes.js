@@ -13,14 +13,16 @@ router.get('/test', async (req, res) => {
 // Add this route to get all pending milestones for an advisor
 router.get('/pending-milestones', protect, async (req, res) => {
   try {
-    console.log('Starting pending milestones fetch for advisor:', {
+    console.log('\n=== Pending Milestones Debug ===');
+    console.log('1. Request details:', {
       advisorId: req.user._id,
-      advisorRole: req.user.role
+      advisorRole: req.user.role,
+      advisorName: `${req.user.first_name} ${req.user.last_name}`
     });
     
     // Get all students advised by this advisor
     const students = await User.find({ advisor: req.user._id });
-    console.log('Found students:', {
+    console.log('2. Found students:', {
       count: students.length,
       students: students.map(s => ({
         id: s._id,
@@ -31,54 +33,50 @@ router.get('/pending-milestones', protect, async (req, res) => {
     
     if (students.length === 0) {
       console.log('No students found for advisor');
-      return res.json([]); // Return empty array instead of error
+      return res.json([]);
     }
 
     const studentIds = students.map(student => student._id);
+    console.log('3. Student IDs to query:', studentIds);
 
-    // First, let's check all milestones for these students
-    const allMilestones = await Milestone.find({
-      studentId: { $in: studentIds }
-    });
-    console.log('All milestones found:', {
-      total: allMilestones.length,
-      byStatus: allMilestones.reduce((acc, m) => {
-        acc[m.status] = (acc[m.status] || 0) + 1;
-        return acc;
-      }, {})
-    });
-
-    // Now get pending ones
+    // Get all pending milestones for these students
     const pendingMilestones = await Milestone.find({
-      studentId: { $in: studentIds },
+      student: { $in: studentIds },
       status: 'PendingApproval'
-    }).populate('studentId', 'first_name last_name');
+    })
+    .populate('student', 'first_name last_name email')
+    .lean();
 
-    console.log('Pending milestones details:', {
+    console.log('4. Found pending milestones:', {
       count: pendingMilestones.length,
       milestones: pendingMilestones.map(m => ({
         id: m._id,
         title: m.title,
         status: m.status,
-        studentId: m.studentId,
-        studentName: m.studentId ? `${m.studentId.first_name} ${m.studentId.last_name}` : 'Unknown'
+        student: m.student?._id,
+        studentName: m.student ? `${m.student.first_name} ${m.student.last_name}` : 'Unknown'
       }))
     });
 
     // Format the response
-    const formattedMilestones = pendingMilestones.map(milestone => ({
+    const formattedMilestones = pendingMilestones.map(milestone => {
+      if (!milestone.student) {
+        console.warn('Missing student data for milestone:', milestone._id);
+        return null;
+      }
+
+      return {
       _id: milestone._id,
       title: milestone.title,
       description: milestone.description,
       dueDate: milestone.dueDate,
       isMajor: milestone.isMajor,
-      studentId: milestone.studentId,
-      studentName: milestone.studentId ? 
-        `${milestone.studentId.first_name} ${milestone.studentId.last_name}` : 
-        'Unknown Student'
-    }));
+        student: milestone.student._id,
+        studentName: `${milestone.student.first_name} ${milestone.student.last_name}`
+      };
+    }).filter(Boolean);
 
-    console.log('Sending response:', {
+    console.log('5. Final response:', {
       count: formattedMilestones.length,
       milestones: formattedMilestones.map(m => ({
         id: m._id,
@@ -92,7 +90,12 @@ router.get('/pending-milestones', protect, async (req, res) => {
     console.error('Error in pending-milestones route:', {
       error: error.message,
       stack: error.stack,
-      user: req.user?._id
+      name: error.name,
+      code: error.code,
+      user: req.user?._id,
+      query: req.query,
+      params: req.params,
+      body: req.body
     });
     res.status(500).json({ 
       message: 'Error fetching pending milestones',

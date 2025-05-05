@@ -14,7 +14,7 @@ const milestoneSchema = new mongoose.Schema({
     enum: ['Planned', 'InProgress', 'PendingApproval', 'Completed'],
     default: 'Planned'
   },
-  studentId: {
+  student: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true

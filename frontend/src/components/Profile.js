@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaBuilding, FaGraduationCap, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 function Profile() {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const [user, setUser] = useState({});
-  const [student, setStudent] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstname: '',
@@ -19,23 +20,7 @@ function Profile() {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        toast.error('Authentication token not found. Please log in again.');
-        navigate('/');
-        return;
-      }
-
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
-
-      if (!storedUser.id) {
+      if (!currentUser?._id) {
         toast.error('User not found. Please log in again.');
         navigate('/');
         return;
@@ -43,7 +28,7 @@ function Profile() {
 
       try {
         // Fetch user data
-        const userResponse = await axios.get(`http://localhost:9000/api/user/${storedUser.id}`, config);
+        const userResponse = await api.get(`/api/user/${currentUser._id}`);
         const userData = userResponse.data;
         console.log('User Data:', userData);
         setUser(userData);
@@ -51,42 +36,12 @@ function Profile() {
         // Update form data with user information
         setFormData(prevData => ({
           ...prevData,
+          firstname: userData.first_name || '',
+          lastname: userData.last_name || '',
           email: userData.email || '',
           department: userData.department || '',
           program: userData.program || ''
         }));
-        
-        // Fetch student data if student ID exists
-        if (storedStudent.id) {
-          try {
-            console.log('Fetching student data for ID:', storedStudent.id);
-            const studentResponse = await axios.get(`http://localhost:9000/api/students/${storedStudent.id}`, config);
-            const studentData = studentResponse.data;
-            console.log('Student Data:', studentData);
-            
-            if (!studentData) {
-              throw new Error('No student data received');
-            }
-            
-            setStudent(studentData);
-            
-            // Update form data with student information
-            setFormData(prevData => ({
-              ...prevData,
-              firstname: studentData.firstname || '',
-              lastname: studentData.lastname || ''
-            }));
-          } catch (studentError) {
-            console.error('Error fetching student data:', {
-              error: studentError,
-              response: studentError.response?.data,
-              status: studentError.response?.status
-            });
-            toast.error(`Failed to fetch student data: ${studentError.response?.data?.error || studentError.message}`);
-          }
-        } else {
-          console.log('No student ID found in localStorage');
-        }
       } catch (error) {
         console.error('Error fetching user data:', {
           error: error,
@@ -99,7 +54,7 @@ function Profile() {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [currentUser, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -110,36 +65,16 @@ function Profile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const storedStudent = JSON.parse(localStorage.getItem('student') || '{}');
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      toast.error('Authentication token not found. Please log in again.');
-      navigate('/');
-      return;
-    }
-
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
 
     try {
       // Update user data
-      await axios.put(`http://localhost:9000/api/user/${storedUser.id}`, {
+      await api.put(`/api/user/${currentUser._id}`, {
+        first_name: formData.firstname,
+        last_name: formData.lastname,
         email: formData.email,
         department: formData.department,
         program: formData.program
-      }, config);
-
-      // Update student data
-      await axios.put(`http://localhost:9000/api/students/${storedStudent.id}`, {
-        firstname: formData.firstname,
-        lastname: formData.lastname,
-        userId: storedUser.id
-      }, config);
+      });
 
       toast.success('Profile updated successfully!');
       setIsEditing(false);
@@ -150,9 +85,7 @@ function Profile() {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('student');
+    logout();
     toast.success("Signed out successfully!");
     navigate("/");
   };
@@ -166,10 +99,10 @@ function Profile() {
           <div className="space-y-4">
             <div className="text-sm text-gray-700 font-medium">Student Profile</div>
             <ul className="space-y-2 mt-2">
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student-dashboard")}>Home</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student/dashboard")}>Home</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student/milestones")}>My Milestones</li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student/notes")}>Notes</li>
               <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Profile</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
             </ul>
           </div>
         </div>

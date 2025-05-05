@@ -7,6 +7,7 @@ import { useAuth } from './contexts/AuthContext';
 export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login, currentUser } = useAuth();
   const [isLogin, setIsLogin] = useState(location.state?.mode === 'login');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +19,6 @@ export default function AuthPage() {
   const [department, setDepartment] = useState("");
   const [advisors, setAdvisors] = useState([]);
   const [selectedAdvisor, setSelectedAdvisor] = useState('');
-  const { login } = useAuth();
 
   useEffect(() => {
     const fetchAdvisors = async () => {
@@ -43,35 +43,41 @@ export default function AuthPage() {
           return;
         }
 
-        const response = await api.post('/api/auth/login', { email, password });
-        console.log('Full login response:', {
-          status: response.status,
-          headers: response.headers,
-          data: response.data
-        });
+        const result = await login(email, password);
+        console.log('Login result:', result);
 
-        // Validate the response data
-        if (!response.data || !response.data.role) {
-          throw new Error('Invalid response from server');
-        }
-
-        // Use the login function from context
-        login(response.data);
-        
+        if (result.success) {
         toast.success('Login successful!');
         
-        // Navigate based on role
-        if (response.data.role === 'student') {
+          // Navigate based on role from the result
+          const userRole = result.user?.role;
+          console.log('Navigating with role:', userRole);
+          
+          switch (userRole) {
+            case 'student':
           navigate('/student/dashboard');
-        } else if (response.data.role === 'advisor') {
+              break;
+            case 'advisor':
           navigate('/advisor/dashboard');
-        } else if (response.data.role === 'admin') {
-          navigate('/admin/dashboard');
+              break;
+            case 'admin':
+              navigate('/admin/dashboard');
+              break;
+            default:
+              navigate('/');
+          }
+        } else {
+          toast.error(result.error || 'Login failed');
         }
       } else {
-        // Signup
-        if (!email || !password || !confirmPassword || !firstName || !lastName || !program || !department) {
-          toast.error("Please fill in all fields");
+        // Signup logic
+        if (!email || !password || !confirmPassword || !firstName || !lastName || !role) {
+          toast.error("Please fill in all required fields");
+          return;
+        }
+
+        if (role === 'student' && !selectedAdvisor) {
+          toast.error("Please select an advisor");
           return;
         }
 
@@ -85,50 +91,32 @@ export default function AuthPage() {
           return;
         }
 
-        // Add validation for advisor selection
-        if (role === 'student' && !selectedAdvisor) {
-          toast.error("Please select an advisor");
-          return;
-        }
-
-        console.log('Registration payload:', {
+        const userData = {
           email,
           password,
           first_name: firstName,
           last_name: lastName,
           role,
-          program,
-          department,
-          advisor: role === 'student' ? selectedAdvisor : undefined
-        });
+          program: program || '',
+          department: department || '',
+          advisor: selectedAdvisor
+        };
 
-        const response = await api.post('/api/auth/register', {
-          email,
-          password,
-          first_name: firstName,
-          last_name: lastName,
-          role,
-          program,
-          department,
-          advisor: role === 'student' ? selectedAdvisor : undefined
-        });
+        console.log('Sending signup data:', userData);
 
-        if (response.status === 201) {
-          toast.success('Registration successful! Please log in.');
+        const response = await api.post('/api/auth/signup', userData);
+        console.log('Signup response:', response.data);
+
+        if (response.data.success) {
+          toast.success('Account created successfully! Please login.');
           setIsLogin(true);
-          setEmail("");
-          setPassword("");
-          setConfirmPassword("");
-          setFirstName("");
-          setLastName("");
-          setProgram("");
-          setDepartment("");
+        } else {
+          toast.error(response.data.message || 'Signup failed');
         }
       }
     } catch (error) {
       console.error('Auth error:', error);
-      const errorMessage = error.response?.data?.message || 'Authentication failed';
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.message || 'An error occurred');
     }
   };
 

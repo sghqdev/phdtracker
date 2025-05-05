@@ -48,7 +48,7 @@ router.post('/', protect, async (req, res) => {
     const milestoneData = { 
       ...req.body,
       status: req.body.status || 'Planned',
-      studentId: req.user.role === 'student' ? req.user._id : req.body.studentId,
+      student: req.user.role === 'student' ? req.user._id : req.body.student,
       userId: req.user._id
     };
 
@@ -64,18 +64,44 @@ router.post('/', protect, async (req, res) => {
 });
 
 // UPDATE a Milestone
-router.put('/:id', async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   try {
-    const updatedMilestone = await Milestone.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
-    if (!updatedMilestone) {
+    const { status } = req.body;
+    
+    // Validate status
+    const validStatuses = ['Planned', 'InProgress', 'PendingApproval', 'Completed'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    const milestone = await Milestone.findById(req.params.id);
+    if (!milestone) {
       return res.status(404).json({ error: 'Milestone not found' });
     }
+
+    // If status is being updated to Completed, set verified fields
+    if (status === 'Completed') {
+      milestone.verified = true;
+      milestone.verifiedBy = req.user._id;
+      milestone.verifiedAt = new Date();
+    }
+
+    // Update the milestone
+    const updatedMilestone = await Milestone.findByIdAndUpdate(
+      req.params.id,
+      { 
+        $set: {
+          ...req.body,
+          lastReviewedBy: req.user._id,
+          lastReviewedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
     res.json(updatedMilestone);
   } catch (err) {
+    console.error('Error updating milestone:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -87,23 +113,36 @@ router.get('/student/:studentId', protect, async (req, res) => {
   console.log('Params:', req.params);
   
   try {
+    const studentId = req.params.studentId;
+    console.log('Querying milestones for student:', studentId);
+    
+    // Find milestones for this student
     const milestones = await Milestone.find({ 
-      studentId: req.params.studentId 
-    });
+      student: studentId 
+    }).populate('student', 'first_name last_name');
     
     console.log('Found milestones:', {
       count: milestones.length,
       milestones: milestones.map(m => ({
         id: m._id,
         title: m.title,
-        studentId: m.studentId
+        student: m.student,
+        status: m.status
       }))
     });
     
-    res.json(milestones);
+    res.json(milestones || []);
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching milestones:', {
+      error: error.message,
+      stack: error.stack,
+      studentId: req.params.studentId
+    });
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch milestones',
+      details: error.message 
+    });
   }
 });
 

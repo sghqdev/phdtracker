@@ -101,7 +101,7 @@ function AddMilestoneModal({ isOpen, onClose, refreshMilestones, milestoneToEdit
 
       const milestoneData = {
         ...formData,
-        studentId: currentUser._id,
+        student: currentUser._id,
         userId: currentUser._id,
         dueDate: dueDateUTC,
       };

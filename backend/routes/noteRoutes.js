@@ -6,23 +6,23 @@ import {
   deleteNote, 
   markNoteAsRead 
 } from '../controllers/noteControllers.js';
-import { verifyToken } from '../middleware/verifyToken.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all notes for a student
-router.get('/student/:studentId', verifyToken, getStudentNotes);
+router.get('/student/:studentId', protect, getStudentNotes);
 
 // Create a new note
-router.post('/', verifyToken, createNote);
+router.post('/', protect, createNote);
 
 // Update a note
-router.put('/:noteId', verifyToken, updateNote);
+router.put('/:noteId', protect, updateNote);
 
 // Delete a note
-router.delete('/:noteId', verifyToken, deleteNote);
+router.delete('/:noteId', protect, deleteNote);
 
 // Mark note as read
-router.put('/:noteId/read', verifyToken, markNoteAsRead);
+router.put('/:noteId/read', protect, markNoteAsRead);
 
 export default router; 

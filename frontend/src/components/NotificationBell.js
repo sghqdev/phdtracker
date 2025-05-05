@@ -1,60 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { FaBell } from 'react-icons/fa';
-import toast from 'react-hot-toast';
+import api from '../api/axios';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function NotificationBell() {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+    }
+  }, [currentUser]);
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:9000/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setNotifications(response.data);
+      setIsLoading(true);
+      const response = await api.get('/api/notifications');
+      setNotifications(response.data || []);
       setUnreadCount(response.data.filter(n => !n.isRead).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      if (error.response?.status === 401) {
+        navigate('/auth');
+      }
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchNotifications();
-    // Poll for new notifications every minute
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleMarkAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:9000/api/notifications/${notificationId}/read`, {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.put(`/api/notifications/${notificationId}/read`);
       fetchNotifications();
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      if (error.response?.status === 401) {
+        navigate('/auth');
+      }
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put('http://localhost:9000/api/notifications/read-all', {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.put('/api/notifications/read-all');
       fetchNotifications();
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
+      if (error.response?.status === 401) {
+        navigate('/auth');
+      }
     }
   };
 
@@ -88,7 +89,11 @@ function NotificationBell() {
             </div>
           </div>
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {isLoading ? (
+              <div className="p-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
                 No notifications
               </div>

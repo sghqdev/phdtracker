@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaBuilding, FaShieldAlt, FaEdit, FaCheck, FaTimes, FaUsers, FaChartBar, FaGraduationCap } from 'react-icons/fa';
+import api from '../api/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 function AdminProfile() {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const [user, setUser] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [stats, setStats] = useState({
@@ -22,22 +24,7 @@ function AdminProfile() {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        toast.error('Authentication token not found. Please log in again.');
-        navigate('/');
-        return;
-      }
-
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
-
-      if (!storedUser.id) {
+      if (!currentUser?._id) {
         toast.error('User not found. Please log in again.');
         navigate('/');
         return;
@@ -45,7 +32,7 @@ function AdminProfile() {
 
       try {
         // Fetch user data
-        const userResponse = await axios.get(`http://localhost:9000/api/user/${storedUser.id}`, config);
+        const userResponse = await api.get(`/api/user/${currentUser._id}`);
         const userData = userResponse.data;
         setUser(userData);
         
@@ -58,7 +45,7 @@ function AdminProfile() {
         });
 
         // Fetch admin statistics
-        const statsResponse = await axios.get('http://localhost:9000/api/students', config);
+        const statsResponse = await api.get('/api/students');
         const students = statsResponse.data;
         
         // Calculate statistics
@@ -72,13 +59,18 @@ function AdminProfile() {
         });
       } catch (error) {
         console.error('Error fetching data:', error);
+        if (error.response?.status === 401) {
+          toast.error('Session expired. Please login again.');
+          navigate('/auth');
+        } else {
         toast.error('Failed to fetch data. Please try logging in again.');
         navigate('/');
+        }
       }
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [currentUser, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -89,41 +81,37 @@ function AdminProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const token = localStorage.getItem('token');
 
-    if (!token) {
-      toast.error('Authentication token not found. Please log in again.');
+    if (!currentUser?._id) {
+      toast.error('User not found. Please log in again.');
       navigate('/');
       return;
     }
 
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
     try {
       // Update user data
-      await axios.put(`http://localhost:9000/api/user/${storedUser.id}`, {
+      await api.put(`/api/user/${currentUser._id}`, {
         first_name: formData.firstname,
         last_name: formData.lastname,
         email: formData.email,
         department: formData.department
-      }, config);
+      });
 
       toast.success('Profile updated successfully!');
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        navigate('/auth');
+      } else {
       toast.error('Failed to update profile');
+      }
     }
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    logout();
     toast.success("Signed out successfully!");
     navigate("/");
   };

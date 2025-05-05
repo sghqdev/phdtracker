@@ -21,8 +21,8 @@ export const startReminderScheduler = () => {
       // Create notifications for each upcoming milestone
       for (const milestone of upcomingMilestones) {
         const notification = new Notification({
-          student: milestone.student._id,
-          type: 'reminder',
+          userId: milestone.student._id,
+          milestoneId: milestone._id,
           title: 'Upcoming Milestone Reminder',
           message: `Reminder: The milestone "${milestone.title}" is due tomorrow.`,
           isRead: false

@@ -1,9 +1,8 @@
 // Updated StudentDashboard.js with Progress Bars on Cards
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
-import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import MilestoneDetailsModal from "./MilestoneDetailsModal";
@@ -40,8 +39,7 @@ const normalizeStatus = (status) => {
 function StudentDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser, logout } = useAuth();
   const [columns, setColumns] = useState(() => {
     // Initialize columns with empty arrays
     const initialColumns = {};
@@ -53,156 +51,195 @@ function StudentDashboard() {
     });
     return initialColumns;
   });
+
+  // Add a key for DragDropContext
+  const [contextKey, setContextKey] = useState(0);
+
+  // Remove unused state and refs
+  const [isLoading, setIsLoading] = useState(true);
+  const isMounted = useRef(false);
   const [isAddMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [milestoneToEdit, setMilestoneToEdit] = useState(null);
-  const [isRenderChange, setRenderChange] = useState(false);
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [isDataReady, setIsDataReady] = useState(false);
+
   // Extract studentId from URL if viewing from advisor context
   const studentIdFromUrl = location.pathname.split('/advisor/student/')[1];
   
   // Use the appropriate ID for fetching milestones
   const targetStudentId = studentIdFromUrl || currentUser?._id;
 
-  useEffect(() => {
-    if (!targetStudentId) return;
-    fetchMilestones();
-    fetchStudentData();
-  }, [targetStudentId, isAddMilestoneModalOpen, isRenderChange]);
-
-  const fetchMilestones = async () => {
+  // Memoize the fetchMilestones function to prevent unnecessary recreations
+  const fetchMilestones = useCallback(async () => {
     if (!targetStudentId) return;
 
     try {
       setIsLoading(true);
-      console.log('Attempting to fetch milestones for ID:', targetStudentId);
       const response = await api.get(`/api/milestones/student/${targetStudentId}`);
       
-      const milestoneData = response.data;
-      console.log('Raw milestone data:', milestoneData);
-      
-      const newColumns = {};
-      Object.entries(FIXED_COLUMNS).forEach(([key, column]) => {
-        const filteredMilestones = milestoneData
-          .filter(m => m.status === key)
-          .map(m => ({
-            ...m,
-            id: String(m._id),
-            _id: String(m._id)
-          }));
-        newColumns[key] = {
-          ...column,
-          items: filteredMilestones,
-        };
-      });
+      // Initialize empty columns
+      const newColumns = {
+        Planned: { id: 'Planned', name: 'Planned', items: [] },
+        InProgress: { id: 'InProgress', name: 'In Progress', items: [] },
+        PendingApproval: { id: 'PendingApproval', name: 'Pending Approval', items: [] },
+        Completed: { id: 'Completed', name: 'Completed', items: [] }
+      };
 
-      console.log('Processed columns:', newColumns);
+      // Only process data if it exists and is an array
+      if (Array.isArray(response.data)) {
+        console.log('Processing milestones:', response.data);
+        response.data.forEach(milestone => {
+          const normalizedStatus = normalizeStatus(milestone.status);
+          if (newColumns[normalizedStatus]) {
+            // Ensure we have a stable string ID
+            const milestoneId = String(milestone._id);
+            const milestoneItem = {
+              id: milestoneId, // Use the same ID for both id and _id
+              _id: milestoneId,
+              title: milestone.title,
+              content: milestone.title,
+              description: milestone.description,
+              dueDate: milestone.dueDate,
+              status: normalizedStatus,
+              isMajor: milestone.isMajor
+            };
+            newColumns[normalizedStatus].items.push(milestoneItem);
+          }
+        });
+      }
+
+      console.log('Setting new columns:', newColumns);
       setColumns(newColumns);
+      setIsDataReady(true);
+      // Force a remount of DragDropContext
+      setContextKey(prev => prev + 1);
     } catch (error) {
       console.error('Milestone fetch error:', error);
-      toast.error("Failed to load milestones");
+      setColumns({
+        Planned: { id: 'Planned', name: 'Planned', items: [] },
+        InProgress: { id: 'InProgress', name: 'In Progress', items: [] },
+        PendingApproval: { id: 'PendingApproval', name: 'Pending Approval', items: [] },
+        Completed: { id: 'Completed', name: 'Completed', items: [] }
+      });
+      
+      if (error.response?.status === 401) {
+        navigate('/auth');
+      } else if (error.response?.status !== 500) {
+        toast.error('Failed to load milestones');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [targetStudentId, navigate]);
 
-  const fetchStudentData = async () => {
+  // Memoize the fetchStudentData function
+  const fetchStudentData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const student = JSON.parse(localStorage.getItem('student'));
-      
-      if (student && student.id) {
-        const response = await axios.get(
-          `http://localhost:9000/api/students/${student.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-        setUnreadNotesCount(response.data.unreadNotesCount || 0);
-      }
+      const response = await api.get(`/api/user/${targetStudentId}`);
+      setUnreadNotesCount(response.data.unreadNotesCount || 0);
     } catch (error) {
       console.error('Error fetching student data:', error);
+      toast.error('Failed to load student data');
     }
-  };
+  }, [targetStudentId]);
 
-  const onDragEnd = async (result) => {
-    if (!result.destination || isLoading) return;
+  // Initial data fetch - only runs once on mount
+  useEffect(() => {
+    if (!targetStudentId) return;
+    
+    // Only fetch if not already mounted
+    if (!isMounted.current) {
+      isMounted.current = true;
+      fetchMilestones();
+      fetchStudentData();
+    }
 
-    const { source, destination } = result;
-    const sourceId = source.droppableId;
-    const destId = destination.droppableId;
+    // Cleanup function
+    return () => {
+      isMounted.current = false;
+    };
+  }, [targetStudentId, fetchMilestones, fetchStudentData]);
 
-    console.log('Drag result:', {
-      source: sourceId,
-      destination: destId,
-      draggableId: result.draggableId
-    });
-
-    // Get the source and destination columns
-    const sourceColumn = columns[sourceId];
-    const destColumn = columns[destId];
-
-    if (!sourceColumn || !destColumn) {
-      console.error('Invalid source or destination column:', { sourceId, destId });
+  // Memoize the onDragEnd function to prevent unnecessary recreations
+  const onDragEnd = useCallback(async (result) => {
+    if (!result.destination) {
       return;
     }
 
-    // Create new arrays for the items
-    const sourceItems = Array.from(sourceColumn.items);
-    const destItems = Array.from(destColumn.items);
+    const { source, destination, draggableId } = result;
 
-    // Remove the dragged item from the source
-    const [movedItem] = sourceItems.splice(source.index, 1);
-
-    if (sourceId !== destId) {
-      // Add to destination
-      movedItem.status = destId;
-      destItems.splice(destination.index, 0, movedItem);
-
-      // Update state
-      const newColumns = {
-        ...columns,
-        [sourceId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-        [destId]: {
-          ...destColumn,
-          items: destItems,
-        },
-      };
-
-      setColumns(newColumns);
-
-      // Update in backend
-      try {
-        await api.put(`/api/milestones/${movedItem._id}`, {
-          status: movedItem.status,
-        });
-        toast.success("Milestone status updated!");
-      } catch (error) {
-        console.error("Error updating milestone status:", error);
-        toast.error("Failed to update milestone status.");
-        fetchMilestones(); // Revert on error
-      }
-    } else {
-      // Same column reorder
-      sourceItems.splice(destination.index, 0, movedItem);
-      const newColumns = {
-        ...columns,
-        [sourceId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-      };
-      setColumns(newColumns);
+    // Don't do anything if dropped in the same place
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
     }
-  };
+
+    // Find the source and destination columns
+    const sourceColumn = columns[source.droppableId];
+    const destColumn = columns[destination.droppableId];
+
+    if (!sourceColumn || !destColumn) {
+      return;
+    }
+
+    // Create new arrays for source and destination
+    const sourceItems = Array.from(sourceColumn.items);
+    const destItems = source.droppableId === destination.droppableId
+      ? sourceItems
+      : Array.from(destColumn.items);
+
+    // Remove from source
+    const [removed] = sourceItems.splice(source.index, 1);
+    if (!removed) {
+      return;
+    }
+
+    // Add to destination
+    destItems.splice(destination.index, 0, removed);
+
+    // Update the columns state
+    const newColumns = {
+      ...columns,
+      [source.droppableId]: {
+        ...sourceColumn,
+        items: sourceItems
+      }
+    };
+
+    if (source.droppableId !== destination.droppableId) {
+      newColumns[destination.droppableId] = {
+        ...destColumn,
+        items: destItems
+      };
+    }
+
+    // Update the milestone status in the backend
+    try {
+      const newStatus = destination.droppableId;
+      await api.patch(`/api/milestones/${draggableId}`, {
+        status: newStatus
+      });
+
+      // Update the local state
+      setColumns(newColumns);
+      toast.success('Milestone status updated');
+    } catch (error) {
+      console.error('Failed to update milestone status:', error);
+      toast.error('Failed to update milestone status');
+      // Revert the columns state
+      setColumns(columns);
+    }
+  }, [columns]);
+
+  // Memoize the onDragStart function
+  const onDragStart = useCallback((start) => {
+    console.log('Drag started:', start);
+  }, []);
 
   const handleMilestoneClick = (milestone) => {
     setSelectedMilestone(milestone);
@@ -220,7 +257,7 @@ function StudentDashboard() {
     try {
       await api.delete(`/milestones/${milestoneId}`);
       toast.success("Milestone deleted");
-      setRenderChange(prev => !prev);
+      fetchMilestones(); // Refresh the milestones after deletion
     } catch (error) {
       console.error('Delete error:', error);
       toast.error("Failed to delete milestone");
@@ -252,37 +289,59 @@ function StudentDashboard() {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/auth');
+    logout();
+    toast.success("Signed out successfully!");
+    navigate("/");
   };
 
-  // Add this function to check auth state
-  const isAuthenticated = () => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    return token && user;
-  };
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-white">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between h-full">
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 px-4 py-6 flex flex-col justify-between">
         <div>
           <div className="text-indigo-600 font-bold text-xl mb-8">PhDTracker</div>
           <div className="space-y-4">
-            <div className="text-sm text-gray-700 font-medium">Student Profile</div>
+            <div className="text-sm text-gray-700 font-medium">Student Dashboard</div>
             <ul className="space-y-2 mt-2">
-              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">Home</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/milestones")}>My Milestones</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer relative" onClick={() => navigate("/notes")}>
-                Notes
-                {unreadNotesCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadNotesCount}
-                  </span>
-                )}
+              <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">
+                Home
+              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                <Link
+                  to="/student/milestones"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  My Milestones
+                </Link>
+              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                <Link
+                  to="/student/notes"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  Notes
+                </Link>
+              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                <Link
+                  to="/profile"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  Profile
+                </Link>
               </li>
             </ul>
           </div>
@@ -310,87 +369,126 @@ function StudentDashboard() {
               ← Back to Advisor Dashboard
             </button>
           )}
-          <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
+          <input 
+            className="bg-gray-100 rounded px-3 py-2 w-1/3" 
+            placeholder="Search..." 
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
           <div className="flex items-center gap-4">
             <NotificationBell />
-            <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" onClick={() => setAddMilestoneModalOpen(true)}>Add Milestone</button>
+            <button 
+              className="bg-indigo-600 text-white px-4 py-2 rounded text-sm" 
+              onClick={() => setAddMilestoneModalOpen(true)}
+            >
+              Add Milestone
+            </button>
           </div>
         </header>
 
+        {/* Milestone Section */}
         <main className="p-6 overflow-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
-          ) : (
-            <div className="flex gap-6">
-              {Object.entries(columns).map(([columnId, column]) => (
-                <div key={columnId} className="flex-1 min-w-[250px] max-w-[350px]">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">{column.name}</h2>
-                  <Droppable droppableId={columnId}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`bg-gray-50 p-4 rounded-lg min-h-[500px] ${
-                          snapshot.isDraggingOver ? 'bg-gray-100' : ''
-                        }`}
-                      >
-                        {column.items.map((item, index) => (
-                          <Draggable
-                            key={item.id}
-                            draggableId={item.id}
-                            index={index}
+          <h1 className="text-2xl font-semibold text-gray-800 mb-6">
+            {studentIdFromUrl ? "Student Milestones" : "My Milestones"}
+          </h1>
+
+          {/* Only render DragDropContext when we have data */}
+          {!isLoading && (
+            <DragDropContext key={contextKey} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Object.entries(columns).map(([columnId, column]) => {
+                  console.log(`Rendering column ${columnId} with items:`, column.items.map(i => i.id));
+                  return (
+                    <div key={columnId} className="bg-gray-50 p-4 rounded-lg">
+                      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                        {column.name}
+                      </h2>
+                      <Droppable droppableId={columnId}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`min-h-[200px] ${
+                              snapshot.isDraggingOver ? "bg-gray-100" : ""
+                            }`}
                           >
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`bg-white p-4 rounded-lg shadow-sm mb-4 cursor-move ${
-                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
-                                }`}
-                              >
-                                <div className="flex justify-between items-start mb-2">
-                                  <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
-                                  <div className="flex items-center gap-2">
-                                    {item.isMajor && <span className="text-yellow-400">⭐</span>}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMilestoneClick(item);
+                            {column.items.map((item, index) => {
+                              const itemId = String(item.id);
+                              console.log(`Rendering draggable ${itemId} at index ${index}`);
+                              return (
+                                <Draggable
+                                  key={itemId}
+                                  draggableId={itemId}
+                                  index={index}
+                                >
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      style={{
+                                        ...provided.draggableProps.style
                                       }}
-                                      className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50"
+                                      className={`bg-white p-4 rounded-lg shadow-sm mb-4 cursor-pointer hover:shadow-md transition-shadow duration-200 ${
+                                        snapshot.isDragging ? "shadow-lg" : ""
+                                      }`}
+                                      onClick={() => handleMilestoneClick(item)}
                                     >
-                                      <FaEye size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-2">{item.description}</p>
-                                {item.dueDate && (
-                                  <p className="text-sm text-gray-500 mt-2">
-                                    Due: {new Date(item.dueDate).toLocaleDateString()}
-                                  </p>
-                                )}
-                                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
-                                  <div
-                                    className="h-full rounded-full transition-all duration-300"
-                                    style={{
-                                      width: `${PROGRESS_BY_STATUS[item.status]?.percent || 0}%`,
-                                      backgroundColor: PROGRESS_BY_STATUS[item.status]?.color || '#ccc',
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              ))}
+                                      <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-semibold text-gray-800">
+                                          {item.title}
+                                        </h3>
+                                        {item.isMajor && (
+                                          <span
+                                            title="Major Milestone"
+                                            className="text-yellow-400"
+                                          >
+                                            ⭐
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-gray-600 mt-2">
+                                        {item.description}
+                                      </p>
+                                      {item.dueDate && (
+                                        <p className="text-sm text-gray-500 mt-2">
+                                          Due: {new Date(item.dueDate).toLocaleDateString()}
+                                        </p>
+                                      )}
+                                      {/* Progress Bar */}
+                                      <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
+                                        <div
+                                          className="h-full rounded-full"
+                                          style={{
+                                            width: `${
+                                              PROGRESS_BY_STATUS[item.status]?.percent || 0
+                                            }%`,
+                                            backgroundColor:
+                                              PROGRESS_BY_STATUS[item.status]?.color ||
+                                              "#ccc",
+                                          }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  );
+                })}
+              </div>
+            </DragDropContext>
+          )}
+
+          {/* Show loading state */}
+          {isLoading && (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             </div>
           )}
         </main>
@@ -402,10 +500,11 @@ function StudentDashboard() {
           onClose={() => {
             setAddMilestoneModalOpen(false);
             setMilestoneToEdit(null);
+            fetchMilestones();
           }}
-          studentId={JSON.parse(localStorage.getItem('student') || '{}')._id}
-          userId={JSON.parse(localStorage.getItem('user') || '{}')._id}
-          refreshMilestones={() => setRenderChange(prev => !prev)}
+          studentId={targetStudentId}
+          userId={currentUser?._id}
+          refreshMilestones={fetchMilestones}
           milestoneToEdit={milestoneToEdit}
         />
       )}

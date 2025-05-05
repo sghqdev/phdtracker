@@ -43,16 +43,24 @@ function MilestonePage() {
       const response = await api.get(url);
       console.log('Milestone response:', response.data);
 
-      if (!response.data) {
-        console.log('No data in response');
-        return;
+      // Initialize empty milestones array
+      let milestonesData = [];
+
+      // If we have valid data, use it
+      if (response.data && Array.isArray(response.data)) {
+        milestonesData = response.data;
       }
 
-      const milestonesData = Array.isArray(response.data) ? response.data : [];
       setMilestones(milestonesData);
     } catch (err) {
       console.error('Milestone fetch error:', err);
+      // Set empty milestones array on error
+      setMilestones([]);
+      
+      // Only show error toast if it's not a 500 error (which might just mean no milestones)
+      if (err.response?.status !== 500) {
       toast.error('Failed to load milestones');
+      }
     }
   };
 
@@ -93,7 +101,7 @@ function MilestonePage() {
                 className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" 
                 onClick={() => navigate("/student/dashboard")}
               >
-                Dashboard
+                Home
               </li>
               <li 
                 className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
@@ -101,11 +109,8 @@ function MilestonePage() {
               >
                 My Milestones
               </li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
-                Progress
-              </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/student/notes")}>Notes</li>
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/profile")}>Profile</li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer" onClick={() => navigate("/notes")}>Notes</li>
             </ul>
           </div>
         </div>
@@ -141,7 +146,6 @@ function MilestonePage() {
             >
               Add Milestone
             </button>
-            <img src="/avatar.png" alt="User" className="h-8 w-8 rounded-full" />
           </div>
         </header>
 

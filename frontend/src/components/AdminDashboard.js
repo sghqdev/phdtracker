@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { FaEdit, FaTrash, FaFileExport, FaPlus, FaChartBar, FaUsers, FaGraduationCap, FaCheckCircle, FaChevronDown } from 'react-icons/fa';
@@ -28,9 +28,37 @@ function AdminDashboard() {
   const [activeView, setActiveView] = useState(location.pathname === '/admin/reports' ? 'reports' : 'students');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
+  const fetchStudents = useCallback(async () => {
+    try {
+      const response = await api.get('/api/students?populate=milestones');
+      console.log('\n=== Fetched Students Response ===');
+      console.log('Response data:', response.data.map(student => ({
+        id: student._id,
+        name: `${student.firstname} ${student.lastname}`,
+        hasMilestones: !!student.milestones,
+        milestoneCount: student.milestones?.length || 0,
+        milestones: student.milestones?.map(m => ({
+          id: m._id,
+          title: m.title,
+          status: m.status
+        }))
+      })));
+      setStudents(response.data);
+      setFilteredStudents(response.data);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        navigate('/auth');
+      } else {
+        toast.error('Failed to fetch students');
+      }
+    }
+  }, [navigate]);
+
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [fetchStudents]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -48,35 +76,9 @@ function AdminDashboard() {
     }
   }, [searchQuery, students]);
 
-  const fetchStudents = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:9000/api/students', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setStudents(response.data);
-      setFilteredStudents(response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-        navigate('/auth');
-      } else {
-        toast.error('Failed to fetch students');
-      }
-    }
-  };
-
   const fetchStudentMilestones = async (studentId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:9000/api/milestones/student/${studentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get(`/api/milestones/student/${studentId}`);
       setStudentMilestones(response.data);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -169,21 +171,16 @@ function AdminDashboard() {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const endpoint = noteToEdit 
-        ? `http://localhost:9000/api/notes/${noteToEdit._id}`
-        : 'http://localhost:9000/api/notes';
+        ? `/api/notes/${noteToEdit._id}`
+        : '/api/notes';
       
       const method = noteToEdit ? 'put' : 'post';
       
-      await axios[method](endpoint, {
+      await api[method](endpoint, {
         studentId: selectedStudent._id,
         content: noteText,
         isRead: false
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
 
       toast.success(noteToEdit ? 'Note updated successfully' : 'Note added successfully');
@@ -209,12 +206,7 @@ function AdminDashboard() {
 
   const handleDeleteNote = async (noteId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:9000/api/notes/${noteId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.delete(`/api/notes/${noteId}`);
       toast.success('Note deleted successfully');
       fetchStudents();
     } catch (error) {
@@ -260,8 +252,9 @@ function AdminDashboard() {
 
       // Milestone stats
       const studentMilestones = student.milestones || [];
+      const completedMilestones = studentMilestones.filter(m => m.status === 'Completed').length;
       stats.milestoneStats.total += studentMilestones.length;
-      stats.milestoneStats.completed += studentMilestones.filter(m => m.status === 'Completed').length;
+      stats.milestoneStats.completed += completedMilestones;
     });
 
     stats.milestoneStats.remaining = stats.milestoneStats.total - stats.milestoneStats.completed;
@@ -470,7 +463,7 @@ function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Program</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Milestones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Completed Milestones</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">View/Edit/Add/Delete Notes</th>
                     </tr>
                   </thead>
@@ -499,7 +492,16 @@ function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {student.milestones?.filter(m => m.status === 'Completed').length || 0} / {student.milestones?.length || 0}
+                          {(() => {
+                            const completedCount = student.milestones?.filter(m => m.status === 'Completed').length || 0;
+                            const totalCount = student.milestones?.length || 0;
+                            console.log(`Student ${student.firstname} ${student.lastname} milestone counts:`, {
+                              completed: completedCount,
+                              total: totalCount,
+                              milestones: student.milestones
+                            });
+                            return `${completedCount} / ${totalCount}`;
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div 

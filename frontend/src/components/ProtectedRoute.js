@@ -1,45 +1,35 @@
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+export default function ProtectedRoute({ children, allowedRoles }) {
+  const { currentUser, isLoading } = useAuth();
   const location = useLocation();
-  const { currentUser } = useAuth();
-  const token = localStorage.getItem('token');
 
-  // Add event listener for popstate (back/forward navigation)
-  useEffect(() => {
-    const handlePopState = () => {
-      if (!token) {
-        window.location.replace('/');
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [token]);
-
-  if (!currentUser || !token) {
-    // Clear any remaining auth data
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    sessionStorage.clear();
-    
-    // Redirect to login page but save the attempted url
-    return <Navigate to="/" state={{ from: location }} replace />;
+  // If still loading, show loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
 
-  // If roles are specified and user's role is not in the allowed roles, redirect to appropriate dashboard
-  if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
-    const redirectPath = currentUser.role === 'admin' 
-      ? '/admin/dashboard'
-      : currentUser.role === 'advisor'
-        ? '/advisor/dashboard'
-        : '/student/dashboard';
-    return <Navigate to={redirectPath} replace />;
+  // If no user is logged in, redirect to login
+  if (!currentUser) {
+    return <Navigate to="/auth" state={{ from: location, mode: 'login' }} replace />;
   }
 
+  // If user's role is not allowed, redirect to their dashboard
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    const dashboardPath = currentUser.role === 'student' 
+      ? '/student/dashboard' 
+      : currentUser.role === 'advisor' 
+        ? '/advisor/dashboard' 
+        : '/admin/dashboard';
+    return <Navigate to={dashboardPath} replace />;
+  }
+
+  // If all checks pass, render the protected content
   return children;
-};
-
-export default ProtectedRoute; 
+} 

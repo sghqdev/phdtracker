@@ -6,37 +6,24 @@ const api = axios.create({
   baseURL: 'http://localhost:9001',
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Content-Type': 'application/json'
   }
 });
 
-// Single request interceptor with complete logging
+// Add a request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add this detailed URL logging
-    const fullUrl = `${config.baseURL}${config.url}`;
-    console.log('📍 Request URL Details:', {
-      baseURL: config.baseURL,
-      path: config.url,
-      fullUrl: fullUrl,
-      method: config.method?.toUpperCase()
+    // Log outgoing requests
+    console.log('🚀 Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers
     });
-    
-    const requestInfo = {
-      fullUrl,
-      method: config.method?.toUpperCase(),
-      headers: config.headers,
-      withCredentials: config.withCredentials,
-      params: config.params,
-      data: config.data
-    };
-    
-    console.log('🚀 Outgoing Request:', requestInfo);
     return config;
   },
   (error) => {
-    console.error('❌ Request Error:', error);
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
@@ -44,6 +31,7 @@ api.interceptors.request.use(
 // Add a response interceptor
 api.interceptors.response.use(
   (response) => {
+    // Log successful responses
     console.log('✅ Response Success:', {
       url: response.config.url,
       status: response.status,
@@ -55,7 +43,8 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('❌ Response Error:', {
+    // Log error responses
+    console.log('❌ Response Error:', {
       url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
