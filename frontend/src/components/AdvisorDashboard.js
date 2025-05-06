@@ -104,16 +104,7 @@ export default function AdvisorDashboard() {
             <div className="text-sm text-gray-700 font-medium">Advisor Dashboard</div>
             <ul className="space-y-2 mt-2">
               <li className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md">
-                Home
-              </li>
-              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
-                <Link
-                  to="/advisor/student-progress"
-                  className="text-gray-700 w-full h-full block"
-                  style={{ display: 'block', width: '100%', height: '100%' }}
-                >
-                  Student Progress
-                </Link>
+                Dashboard
               </li>
               <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
                 <Link
@@ -124,6 +115,16 @@ export default function AdvisorDashboard() {
                   Pending Approvals
                 </Link>
               </li>
+              <li className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer">
+                <Link
+                  to="/advisor/student-progress"
+                  className="text-gray-700 w-full h-full block"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  Student Progress
+                </Link>
+              </li>
+
             </ul>
           </div>
         </div>

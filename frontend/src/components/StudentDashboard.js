@@ -511,6 +511,20 @@ function StudentDashboard() {
                                           }}
                                         ></div>
                                       </div>
+                                      {/* Feedback Section */}
+                                      {item.feedback && (
+                                        <div className="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-sm font-medium text-gray-700">Advisor Feedback:</span>
+                                            {item.feedbackDate && (
+                                              <span className="text-xs text-gray-500">
+                                                {new Date(item.feedbackDate).toLocaleDateString()}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-sm text-gray-600">{item.feedback}</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </Draggable>

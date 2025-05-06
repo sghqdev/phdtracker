@@ -115,16 +115,16 @@ function AdvisorPendingApprovals() {
                 Dashboard
               </li>
               <li 
-                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
-                onClick={() => navigate("/advisor/student-progress")}
-              >
-                Student Progress
-              </li>
-              <li 
                 className="text-indigo-700 bg-indigo-100 px-4 py-2 rounded-md cursor-pointer"
                 onClick={() => navigate("/advisor/pending-approvals")}
               >
                 Pending Approvals
+              </li>
+              <li 
+                className="text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer"
+                onClick={() => navigate("/advisor/student-progress")}
+              >
+                Student Progress
               </li>
             </ul>
           </div>

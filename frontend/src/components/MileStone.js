@@ -214,6 +214,20 @@ function MilestonePage() {
                   <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
                     <div className="h-full rounded-full" style={{ width: `${PROGRESS_BY_STATUS[milestone.status]?.percent || 0}%`, backgroundColor: PROGRESS_BY_STATUS[milestone.status]?.color || '#ccc' }}></div>
                   </div>
+                  {/* Feedback Section */}
+                  {milestone.feedback && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">Advisor Feedback:</span>
+                        {milestone.feedbackDate && (
+                          <span className="text-xs text-gray-500">
+                            {new Date(milestone.feedbackDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">{milestone.feedback}</p>
+                    </div>
+                  )}
                 </div>
               ))
             )}
