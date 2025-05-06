@@ -6,7 +6,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import MilestoneDetailsModal from "./MilestoneDetailsModal";
-import { FaPen, FaTrash, FaEye } from "react-icons/fa";
+import { FaPen, FaTrash } from "react-icons/fa";
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -257,7 +257,7 @@ function StudentDashboard() {
 
   const handleDelete = async (milestoneId) => {
     try {
-      await api.delete(`/milestones/${milestoneId}`);
+      await api.delete(`/api/milestones/${milestoneId}`);
       toast.success("Milestone deleted");
       fetchMilestones(); // Refresh the milestones after deletion
     } catch (error) {
