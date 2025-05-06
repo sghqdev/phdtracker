@@ -438,14 +438,39 @@ function StudentDashboard() {
                                         <h3 className="text-lg font-semibold text-gray-800">
                                           {item.title}
                                         </h3>
-                                        {item.isMajor && (
-                                          <span
-                                            title="Major Milestone"
-                                            className="text-yellow-400"
+                                        <div className="flex items-center gap-2">
+                                          {item.isMajor && (
+                                            <span
+                                              title="Major Milestone"
+                                              className="text-yellow-400"
+                                            >
+                                              ⭐
+                                            </span>
+                                          )}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setMilestoneToEdit(item);
+                                              setAddMilestoneModalOpen(true);
+                                            }}
+                                            className="text-gray-600 hover:text-indigo-600"
+                                            title="Edit Milestone"
                                           >
-                                            ⭐
-                                          </span>
-                                        )}
+                                            <FaPen size={16} />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to delete this milestone?')) {
+                                                handleDelete(item._id);
+                                              }
+                                            }}
+                                            className="text-gray-600 hover:text-red-600"
+                                            title="Delete Milestone"
+                                          >
+                                            <FaTrash size={16} />
+                                          </button>
+                                        </div>
                                       </div>
                                       <p className="text-sm text-gray-600 mt-2">
                                         {item.description}
