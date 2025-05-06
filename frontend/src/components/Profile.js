@@ -108,6 +108,12 @@ function Profile() {
         </div>
 
         <div className="space-y-2">
+        <div className="flex items-center space-x-3 px-2">
+            <div className="text-sm">
+              <p className="font-medium">{currentUser.first_name} {currentUser.last_name}</p>
+              <p className="text-xs text-gray-500">{currentUser.email}</p>
+            </div>
+          </div>
           <div
             className="text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md cursor-pointer text-sm font-medium"
             onClick={handleSignOut}
