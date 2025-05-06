@@ -65,6 +65,7 @@ function StudentDashboard() {
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDataReady, setIsDataReady] = useState(false);
+  const [originalColumns, setOriginalColumns] = useState(null);
 
   // Extract studentId from URL if viewing from advisor context
   const studentIdFromUrl = location.pathname.split('/advisor/student/')[1];
@@ -113,6 +114,7 @@ function StudentDashboard() {
 
       console.log('Setting new columns:', newColumns);
       setColumns(newColumns);
+      setOriginalColumns(newColumns);
       setIsDataReady(true);
       // Force a remount of DragDropContext
       setContextKey(prev => prev + 1);
@@ -266,14 +268,23 @@ function StudentDashboard() {
 
   const handleSearch = (query) => {
     setSearchQuery(query);
+    
+    if (!originalColumns) return; // Guard against no original data
+
+    if (!query.trim()) {
+      // If search is empty, restore original data
+      setColumns(originalColumns);
+      return;
+    }
+
     // Filter milestones based on search query
     const filteredColumns = {};
-    Object.entries(columns).forEach(([key, column]) => {
+    Object.entries(originalColumns).forEach(([key, column]) => {
       filteredColumns[key] = {
         ...column,
         items: column.items.filter(milestone => 
           milestone.title.toLowerCase().includes(query.toLowerCase()) ||
-          milestone.description.toLowerCase().includes(query.toLowerCase())
+          (milestone.description && milestone.description.toLowerCase().includes(query.toLowerCase()))
         )
       };
     });
