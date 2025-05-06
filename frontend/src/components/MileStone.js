@@ -8,6 +8,7 @@ import { toast } from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import MilestoneDetailsModal from "./MilestoneDetailsModal";
 import { FaPen, FaTrash } from "react-icons/fa";
+import NotificationBell from "./NotificationBell";
 
 const PROGRESS_BY_STATUS = {
   Planned: { percent: 10, color: "#a78bfa" },
@@ -160,7 +161,7 @@ function MilestonePage() {
         <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm border-b">
           <input className="bg-gray-100 rounded px-3 py-2 w-1/3" placeholder="Search..." />
           <div className="flex items-center gap-4">
-            <button className="text-indigo-600">🔔</button>
+          <NotificationBell />
             <button 
               className="bg-indigo-600 text-white px-4 py-2 rounded text-sm"
               onClick={() => setIsModalOpen(true)}
