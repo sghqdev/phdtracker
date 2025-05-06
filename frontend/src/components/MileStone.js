@@ -7,6 +7,7 @@ import api from "../api/axios";
 import { toast } from "react-hot-toast";
 import AddMilestoneModal from "./AddMilestoneModal";
 import MilestoneDetailsModal from "./MilestoneDetailsModal";
+import { FaPen, FaTrash } from "react-icons/fa";
 
 const PROGRESS_BY_STATUS = {
   Planned: { percent: 10, color: "#a78bfa" },
@@ -88,6 +89,26 @@ function MilestonePage() {
     setIsModalOpen(true);
   };
 
+  const handleEditClick = (milestone, e) => {
+    e.stopPropagation(); // Prevent the card click event from triggering
+    setSelectedMilestone(milestone);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (milestoneId, e) => {
+    e.stopPropagation(); // Prevent the card click event from triggering
+    if (window.confirm('Are you sure you want to delete this milestone?')) {
+      try {
+        await api.delete(`/api/milestones/${milestoneId}`);
+        toast.success("Milestone deleted");
+        fetchMilestones(); // Refresh the milestones after deletion
+      } catch (error) {
+        console.error('Delete error:', error);
+        toast.error("Failed to delete milestone");
+      }
+    }
+  };
+
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
@@ -167,7 +188,23 @@ function MilestonePage() {
                 >
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-gray-800">{milestone.title}</h3>
-                    {milestone.isMajor && <span title="Major Milestone" className="text-yellow-400">⭐</span>}
+                    <div className="flex items-center gap-2">
+                      {milestone.isMajor && <span title="Major Milestone" className="text-yellow-400">⭐</span>}
+                      <button
+                        onClick={(e) => handleEditClick(milestone, e)}
+                        className="text-gray-600 hover:text-indigo-600"
+                        title="Edit Milestone"
+                      >
+                        <FaPen size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(milestone._id, e)}
+                        className="text-gray-600 hover:text-red-600"
+                        title="Delete Milestone"
+                      >
+                        <FaTrash size={16} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">{milestone.description}</p>
                   {milestone.dueDate && (
